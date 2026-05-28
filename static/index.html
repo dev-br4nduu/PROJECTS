@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarvis - Personal Assistant</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="title">JARVIS</h1>
+            <p class="subtitle">Personal Assistant</p>
+            <div class="status-indicator online"></div>
+        </header>
+
+        <main class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+                <div class="message jarvis-message">
+                    <p>Good day, sir. How may I be of service?</p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="input-section">
+            <div class="input-wrapper">
+                <input
+                    type="text"
+                    id="userInput"
+                    class="input-field"
+                    placeholder="Speak with Jarvis..."
+                    autocomplete="off"
+                >
+                <button id="sendBtn" class="send-button">Send</button>
+                <button id="resetBtn" class="reset-button">Reset</button>
+            </div>
+        </footer>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
