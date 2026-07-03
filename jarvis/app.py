@@ -156,6 +156,15 @@ def memory_correlations():
         "correlations": jarvis_os.memory.correlate_events()
     })
 
+@app.route("/api/memory/search", methods=["POST"])
+def memory_search():
+    """Busca semântica nos episódios (embeddings + cosseno, não mais LIKE)."""
+    data = request.get_json() or {}
+    query = data.get("query", "")
+    limit = data.get("limit", 5)
+    results = jarvis_os.memory.retrieve_context(query, limit=limit)
+    return jsonify({"query": query, "results": results})
+
 # ============= ENDPOINTS COGNIÇÃO =============
 
 @app.route("/api/cognition/state", methods=["GET"])

@@ -33,7 +33,10 @@ class VectorMemory:
         os.makedirs(data_dir, exist_ok=True)
         self.data_dir = data_dir
         self.db_path = os.path.join(data_dir, db_name)
-        self.vectors_path = os.path.join(data_dir, "vectors.npy")
+        # Namespace the vectors file by db_name so multiple stores can coexist
+        # in the same data_dir without clobbering each other's vectors.
+        stem = os.path.splitext(db_name)[0]
+        self.vectors_path = os.path.join(data_dir, f"{stem}_vectors.npy")
 
         self.backend = get_embedding_backend(prefer_neural=prefer_neural)
         self.embedding_backend_name = self.backend.name

@@ -1,23 +1,38 @@
 """
 Sistema de Memória Episódica e Contextual
 Ponto 7: Memória Episódica - lembra interações, entende histórico, correlaciona eventos
+
+Agora com RECUPERAÇÃO SEMÂNTICA real: `retrieve_context` usa a memória vetorial
+(embeddings + similaridade de cosseno) em vez da antiga busca textual por LIKE.
+A interface pública é a mesma — quem usa esta classe (JarvisOS) não muda.
 """
 
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+import os
 import sqlite3
 import json
 
-class EpisodicMemory:
-    """Sistema de memória episódica do JARVIS"""
+from jarvis.learning.vector_memory import VectorMemory
 
-    def __init__(self, db_path: str = "jarvis_memory.db"):
-        self.db_path = db_path
+
+class EpisodicMemory:
+    """Sistema de memória episódica do JARVIS com busca semântica."""
+
+    def __init__(self, db_path: str = None, data_dir: str = "jarvis_data"):
+        # Mantém compatibilidade: aceita db_path antigo, mas organiza tudo em data_dir.
+        os.makedirs(data_dir, exist_ok=True)
+        self.data_dir = data_dir
+        self.db_path = db_path or os.path.join(data_dir, "episodic_memory.db")
         self.memory_buffer = []
+
+        # Índice vetorial dedicado aos episódios (namespaced, não colide com o RAG).
+        self.vector = VectorMemory(data_dir=data_dir, db_name="episodic_vectors.db")
+
         self._init_database()
 
     def _init_database(self):
-        """Inicializa banco de dados de memória"""
+        """Inicializa banco de dados de memória (fonte de verdade dos episódios)."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
@@ -50,7 +65,7 @@ class EpisodicMemory:
     def record_episode(self, event_type: str, user_input: str,
                       jarvis_response: str, context: Dict) -> int:
         """
-        Registra um episódio na memória
+        Registra um episódio na memória e o indexa semanticamente.
 
         Ponto 7: Memória Episódica
         """
@@ -78,29 +93,52 @@ class EpisodicMemory:
         episode_id = cursor.lastrowid
         conn.close()
 
+        # Indexa no store vetorial. O texto pesquisável combina input + resposta;
+        # o episode_id no metadata liga de volta à fonte de verdade.
+        searchable = user_input if not jarvis_response else f"{user_input}\n{jarvis_response}"
+        self.vector.add(searchable, role="episode", metadata={
+            "episode_id": episode_id,
+            "event_type": event_type,
+        })
+
+        episode["id"] = episode_id
         self.memory_buffer.append(episode)
         return episode_id
 
-    def retrieve_context(self, query: str, limit: int = 5) -> List[Dict]:
+    def retrieve_context(self, query: str, limit: int = 5,
+                        min_similarity: float = 0.1) -> List[Dict]:
         """
-        Recupera contexto histórico relevante
+        Recupera contexto histórico RELEVANTE por similaridade semântica.
 
         Ponto 7: Continuidade operacional
+        Antes: busca textual LIKE. Agora: embeddings + cosseno.
         """
+        hits = self.vector.search(query, top_k=limit, min_similarity=min_similarity)
+        if not hits:
+            return []
+
+        # Junta os episódios pela id guardada no metadata do índice vetorial.
+        episode_ids = [h["metadata"].get("episode_id") for h in hits if h["metadata"].get("episode_id")]
+        if not episode_ids:
+            return []
+
         conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-
-        cursor.execute('''
-            SELECT * FROM episodes
-            WHERE user_input LIKE ? OR learned_insight LIKE ?
-            ORDER BY timestamp DESC
-            LIMIT ?
-        ''', (f"%{query}%", f"%{query}%", limit))
-
-        episodes = cursor.fetchall()
+        placeholders = ",".join("?" for _ in episode_ids)
+        rows = conn.execute(
+            f"SELECT * FROM episodes WHERE id IN ({placeholders})", episode_ids
+        ).fetchall()
         conn.close()
 
-        return [self._parse_episode(ep) for ep in episodes]
+        # Mapeia id -> episódio e preserva a ordem por similaridade, anexando o score.
+        by_id = {row[0]: self._parse_episode(row) for row in rows}
+        results = []
+        for h in hits:
+            eid = h["metadata"].get("episode_id")
+            if eid in by_id:
+                ep = by_id[eid]
+                ep["similarity"] = h["similarity"]
+                results.append(ep)
+        return results
 
     def correlate_events(self) -> List[Dict]:
         """
@@ -150,7 +188,7 @@ class EpisodicMemory:
             "event_type": db_row[2],
             "user_input": db_row[3],
             "jarvis_response": db_row[4],
-            "context": json.loads(db_row[5]),
+            "context": json.loads(db_row[5]) if db_row[5] else {},
             "emotional_state": db_row[6]
         }
 
@@ -171,5 +209,7 @@ class EpisodicMemory:
             "total_episodes": total_episodes,
             "event_types": event_types,
             "buffer_size": len(self.memory_buffer),
-            "correlations_found": len(self.correlate_events())
+            "correlations_found": len(self.correlate_events()),
+            "semantic_retrieval": True,
+            "embedding_backend": self.vector.embedding_backend_name,
         }
