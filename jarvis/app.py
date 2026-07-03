@@ -3,6 +3,10 @@ from flask_cors import CORS
 from jarvis.config import Config
 from jarvis.ai_engine import JarvisAI
 from jarvis.core.system import JarvisOS
+from jarvis.voice import VoiceInterface
+from jarvis.vision import ComputerVision
+from jarvis.integrations import ExternalIntegrations
+from jarvis.core.learning_persistence import LearningPersistence
 
 app = Flask(__name__)
 CORS(app)
@@ -10,6 +14,10 @@ app.config.from_object(Config)
 
 jarvis_ai = JarvisAI()
 jarvis_os = JarvisOS()
+jarvis_voice = VoiceInterface()
+jarvis_vision = ComputerVision()
+jarvis_integrations = ExternalIntegrations()
+jarvis_learning = LearningPersistence()
 
 # Inicializa sistema
 jarvis_os.initialize_systems()
@@ -266,6 +274,342 @@ def execute_mission():
     data = request.get_json()
     mission = jarvis_os.execute_mission(data)
     return jsonify(mission)
+
+# ============= ENDPOINTS VOICE (FASE 2.5) =============
+
+@app.route("/api/voice/speech-to-text", methods=["POST"])
+def speech_to_text():
+    """Converte fala em texto"""
+    if "audio" not in request.files:
+        return jsonify({"error": "Audio file required"}), 400
+
+    audio_data = request.files["audio"].read()
+    language = request.form.get("language", "en-US")
+
+    transcription = jarvis_voice.speech_to_text(audio_data, language)
+    return jsonify(transcription)
+
+@app.route("/api/voice/text-to-speech", methods=["POST"])
+def text_to_speech():
+    """Sintetiza texto em fala"""
+    data = request.get_json()
+    text = data.get("text")
+    tone = data.get("tone", "sophisticated")
+
+    if not text:
+        return jsonify({"error": "Text required"}), 400
+
+    speech = jarvis_voice.text_to_speech(text, tone)
+    return jsonify(speech)
+
+@app.route("/api/voice/process-command", methods=["POST"])
+def process_voice_command():
+    """Processa comando de voz"""
+    data = request.get_json()
+    text = data.get("text")
+
+    if not text:
+        return jsonify({"error": "Text required"}), 400
+
+    command = jarvis_voice.process_voice_command(text)
+    return jsonify(command)
+
+@app.route("/api/voice/detect-sarcasm", methods=["POST"])
+def detect_sarcasm():
+    """Detecta sarcasmo na fala"""
+    data = request.get_json()
+    text = data.get("text")
+    tone_info = data.get("tone_info", {})
+
+    if not text:
+        return jsonify({"error": "Text required"}), 400
+
+    sarcasm = jarvis_voice.detect_sarcasm_in_speech(text, tone_info)
+    return jsonify(sarcasm)
+
+@app.route("/api/voice/enroll-voice", methods=["POST"])
+def enroll_voice():
+    """Matricula perfil de voz do usuário"""
+    user_id = request.form.get("user_id")
+    voice_samples = request.files.getlist("voice_samples")
+
+    if not user_id:
+        return jsonify({"error": "User ID required"}), 400
+
+    audio_data = [f.read() for f in voice_samples]
+    profile = jarvis_voice.create_voice_profile(user_id, audio_data)
+    return jsonify(profile)
+
+@app.route("/api/voice/verify-identity", methods=["POST"])
+def verify_voice_identity():
+    """Verifica identidade por voz"""
+    user_id = request.form.get("user_id")
+
+    if "audio" not in request.files or not user_id:
+        return jsonify({"error": "User ID and audio required"}), 400
+
+    audio_data = request.files["audio"].read()
+    verification = jarvis_voice.verify_voice_identity(user_id, audio_data)
+    return jsonify(verification)
+
+@app.route("/api/voice/status", methods=["GET"])
+def voice_status():
+    """Status do sistema de voz"""
+    return jsonify(jarvis_voice.get_voice_status())
+
+# ============= ENDPOINTS VISION (FASE 2.5) =============
+
+@app.route("/api/vision/analyze-image", methods=["POST"])
+def analyze_image():
+    """Analisa imagem com detecção de objetos"""
+    if "image" not in request.files:
+        return jsonify({"error": "Image file required"}), 400
+
+    image_data = request.files["image"].read()
+    analysis_type = request.form.get("type", "full")
+
+    analysis = jarvis_vision.analyze_image(image_data, analysis_type)
+    return jsonify(analysis)
+
+@app.route("/api/vision/detect-objects", methods=["POST"])
+def detect_objects():
+    """Detecta objetos em imagem"""
+    if "image" not in request.files:
+        return jsonify({"error": "Image file required"}), 400
+
+    image_data = request.files["image"].read()
+    detections = jarvis_vision.detect_objects(image_data)
+    return jsonify(detections)
+
+@app.route("/api/vision/recognize-faces", methods=["POST"])
+def recognize_faces():
+    """Reconhece rostos em imagem"""
+    if "image" not in request.files:
+        return jsonify({"error": "Image file required"}), 400
+
+    image_data = request.files["image"].read()
+    faces = jarvis_vision.recognize_faces(image_data)
+    return jsonify(faces)
+
+@app.route("/api/vision/understand-scene", methods=["POST"])
+def understand_scene():
+    """Compreende cena em imagem"""
+    if "image" not in request.files:
+        return jsonify({"error": "Image file required"}), 400
+
+    image_data = request.files["image"].read()
+    scene = jarvis_vision.understand_scene(image_data)
+    return jsonify(scene)
+
+@app.route("/api/vision/identify-threats", methods=["POST"])
+def identify_threats():
+    """Identifica ameaças em imagem"""
+    if "image" not in request.files:
+        return jsonify({"error": "Image file required"}), 400
+
+    image_data = request.files["image"].read()
+    threats = jarvis_vision.identify_threats(image_data)
+    return jsonify(threats)
+
+@app.route("/api/vision/process-video", methods=["POST"])
+def process_video():
+    """Processa fluxo de vídeo"""
+    data = request.get_json()
+    stream_id = data.get("stream_id")
+    duration = data.get("duration", 30)
+
+    if not stream_id:
+        return jsonify({"error": "Stream ID required"}), 400
+
+    processing = jarvis_vision.process_video_feed(stream_id, duration)
+    return jsonify(processing)
+
+@app.route("/api/vision/status", methods=["GET"])
+def vision_status():
+    """Status do sistema de visão"""
+    return jsonify(jarvis_vision.get_vision_status())
+
+# ============= ENDPOINTS INTEGRAÇÕES (FASE 2.5) =============
+
+@app.route("/api/integrations/connect-weather", methods=["POST"])
+def connect_weather():
+    """Integra serviço de clima"""
+    data = request.get_json()
+    api_key = data.get("api_key")
+
+    if not api_key:
+        return jsonify({"error": "API key required"}), 400
+
+    service = jarvis_integrations.connect_weather_service(api_key)
+    return jsonify(service)
+
+@app.route("/api/integrations/get-weather", methods=["GET"])
+def get_weather():
+    """Obtém informações de tempo"""
+    location = request.args.get("location", "São Paulo")
+    weather = jarvis_integrations.get_weather(location)
+    return jsonify(weather)
+
+@app.route("/api/integrations/connect-news", methods=["POST"])
+def connect_news():
+    """Integra serviço de notícias"""
+    data = request.get_json()
+    api_key = data.get("api_key")
+
+    if not api_key:
+        return jsonify({"error": "API key required"}), 400
+
+    service = jarvis_integrations.connect_news_service(api_key)
+    return jsonify(service)
+
+@app.route("/api/integrations/get-news", methods=["GET"])
+def get_news():
+    """Obtém notícias"""
+    topic = request.args.get("topic")
+    limit = int(request.args.get("limit", 10))
+    news = jarvis_integrations.get_news(topic, limit)
+    return jsonify(news)
+
+@app.route("/api/integrations/register-iot", methods=["POST"])
+def register_iot():
+    """Registra dispositivo IoT"""
+    data = request.get_json()
+    device_id = data.get("device_id")
+    device_type = data.get("device_type")
+    capabilities = data.get("capabilities", [])
+
+    if not device_id or not device_type:
+        return jsonify({"error": "Device ID and type required"}), 400
+
+    device = jarvis_integrations.register_iot_device(device_id, device_type, capabilities)
+    return jsonify(device)
+
+@app.route("/api/integrations/send-iot-command", methods=["POST"])
+def send_iot_command():
+    """Envia comando para dispositivo IoT"""
+    data = request.get_json()
+    device_id = data.get("device_id")
+    command = data.get("command")
+
+    if not device_id or not command:
+        return jsonify({"error": "Device ID and command required"}), 400
+
+    execution = jarvis_integrations.send_command_to_iot(
+        device_id, command, data.get("parameters")
+    )
+    return jsonify(execution)
+
+@app.route("/api/integrations/register-webhook", methods=["POST"])
+def register_webhook():
+    """Registra webhook"""
+    data = request.get_json()
+    event_type = data.get("event_type")
+    webhook_url = data.get("webhook_url")
+
+    if not event_type or not webhook_url:
+        return jsonify({"error": "Event type and webhook URL required"}), 400
+
+    webhook = jarvis_integrations.register_webhook(event_type, webhook_url)
+    return jsonify(webhook)
+
+@app.route("/api/integrations/status", methods=["GET"])
+def integration_status():
+    """Status das integrações"""
+    return jsonify(jarvis_integrations.get_integration_status())
+
+# ============= ENDPOINTS APRENDIZADO (FASE 2.5) =============
+
+@app.route("/api/learning/create-profile", methods=["POST"])
+def create_learning_profile():
+    """Cria perfil de aprendizado do usuário"""
+    data = request.get_json()
+    user_id = data.get("user_id")
+    name = data.get("name")
+
+    if not user_id:
+        return jsonify({"error": "User ID required"}), 400
+
+    profile = jarvis_learning.create_user_profile(user_id, name)
+    return jsonify(profile)
+
+@app.route("/api/learning/save-preference", methods=["POST"])
+def save_preference():
+    """Salva preferência do usuário"""
+    data = request.get_json()
+    user_id = data.get("user_id")
+    key = data.get("key")
+    value = data.get("value")
+
+    if not user_id or not key:
+        return jsonify({"error": "User ID and key required"}), 400
+
+    preference = jarvis_learning.save_user_preference(user_id, key, value)
+    return jsonify(preference)
+
+@app.route("/api/learning/get-preferences/<user_id>", methods=["GET"])
+def get_preferences(user_id):
+    """Obtém preferências do usuário"""
+    preferences = jarvis_learning.retrieve_user_preferences(user_id)
+    return jsonify(preferences)
+
+@app.route("/api/learning/learn-behavior", methods=["POST"])
+def learn_behavior():
+    """Aprende padrão de comportamento"""
+    data = request.get_json()
+    user_id = data.get("user_id")
+    pattern_name = data.get("pattern_name")
+    pattern_data = data.get("pattern_data")
+    confidence = data.get("confidence", 0.8)
+
+    if not user_id or not pattern_name:
+        return jsonify({"error": "User ID and pattern name required"}), 400
+
+    pattern = jarvis_learning.learn_behavior_pattern(
+        user_id, pattern_name, pattern_data, confidence
+    )
+    return jsonify(pattern)
+
+@app.route("/api/learning/get-patterns/<user_id>", methods=["GET"])
+def get_patterns(user_id):
+    """Obtém padrões de comportamento aprendidos"""
+    patterns = jarvis_learning.get_behavior_patterns(user_id)
+    return jsonify(patterns)
+
+@app.route("/api/learning/log-evolution", methods=["POST"])
+def log_evolution():
+    """Registra evolução do aprendizado"""
+    data = request.get_json()
+    user_id = data.get("user_id")
+    session_id = data.get("session_id")
+    autonomy_level = data.get("autonomy_level")
+    learning_metrics = data.get("learning_metrics", {})
+    improvements = data.get("improvements", {})
+
+    if not user_id or not session_id:
+        return jsonify({"error": "User ID and session ID required"}), 400
+
+    evolution = jarvis_learning.log_evolution(
+        user_id, session_id, autonomy_level, learning_metrics, improvements
+    )
+    return jsonify(evolution)
+
+@app.route("/api/learning/evolution-history/<user_id>", methods=["GET"])
+def evolution_history(user_id):
+    """Obtém histórico de evolução"""
+    days = int(request.args.get("days", 30))
+    history = jarvis_learning.get_evolution_history(user_id, days)
+    return jsonify(history)
+
+@app.route("/api/learning/predict-preference/<user_id>", methods=["GET"])
+def predict_preference(user_id):
+    """Prediz próxima preferência do usuário"""
+    prediction = jarvis_learning.predict_next_preference(user_id)
+    return jsonify(prediction)
+
+@app.route("/api/learning/status", methods=["GET"])
+def learning_status():
+    """Status do sistema de aprendizado"""
+    return jsonify(jarvis_learning.get_learning_status())
 
 # ============= ERROR HANDLERS =============
 
