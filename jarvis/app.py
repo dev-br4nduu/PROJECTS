@@ -7,6 +7,11 @@ from jarvis.voice import VoiceInterface
 from jarvis.vision import ComputerVision
 from jarvis.integrations import ExternalIntegrations
 from jarvis.core.learning_persistence import LearningPersistence
+from jarvis.enterprise.security import EnterpriseSecurity, Role, Permission
+from jarvis.enterprise.cloud import CloudDeployment, CloudProvider
+from jarvis.enterprise.analytics import AdvancedAnalytics
+from jarvis.enterprise.collaboration import CollaborationSystem
+from jarvis.enterprise.cicd import CICDPipeline
 
 app = Flask(__name__)
 CORS(app)
@@ -18,6 +23,13 @@ jarvis_voice = VoiceInterface()
 jarvis_vision = ComputerVision()
 jarvis_integrations = ExternalIntegrations()
 jarvis_learning = LearningPersistence()
+
+# Enterprise modules (Fase 4.0)
+jarvis_enterprise_security = EnterpriseSecurity()
+jarvis_cloud = CloudDeployment()
+jarvis_analytics = AdvancedAnalytics()
+jarvis_collaboration = CollaborationSystem()
+jarvis_cicd = CICDPipeline()
 
 # Inicializa sistema
 jarvis_os.initialize_systems()
@@ -610,6 +622,193 @@ def predict_preference(user_id):
 def learning_status():
     """Status do sistema de aprendizado"""
     return jsonify(jarvis_learning.get_learning_status())
+
+# ============= ENDPOINTS ENTERPRISE SECURITY (FASE 4.0) =============
+
+@app.route("/api/enterprise/register", methods=["POST"])
+def enterprise_register():
+    """Registra usuário corporativo"""
+    data = request.get_json()
+    role_map = {r.value: r for r in Role}
+    role = role_map.get(data.get("role", "viewer"), Role.VIEWER)
+    result = jarvis_enterprise_security.register_user(
+        data.get("username"), data.get("password"), role, data.get("email")
+    )
+    return jsonify(result)
+
+@app.route("/api/enterprise/authenticate", methods=["POST"])
+def enterprise_authenticate():
+    """Autentica usuário"""
+    data = request.get_json()
+    result = jarvis_enterprise_security.authenticate(
+        data.get("username"), data.get("password")
+    )
+    return jsonify(result)
+
+@app.route("/api/enterprise/enable-mfa", methods=["POST"])
+def enable_mfa():
+    """Habilita MFA"""
+    data = request.get_json()
+    result = jarvis_enterprise_security.enable_mfa(data.get("username"))
+    return jsonify(result)
+
+@app.route("/api/enterprise/check-compliance/<framework>", methods=["GET"])
+def check_compliance(framework):
+    """Verifica conformidade"""
+    return jsonify(jarvis_enterprise_security.check_compliance(framework))
+
+@app.route("/api/enterprise/audit-log", methods=["GET"])
+def audit_log():
+    """Log de auditoria"""
+    username = request.args.get("username")
+    return jsonify(jarvis_enterprise_security.get_audit_log(username))
+
+@app.route("/api/enterprise/security-status", methods=["GET"])
+def enterprise_security_status():
+    """Status de segurança corporativa"""
+    return jsonify(jarvis_enterprise_security.get_security_status())
+
+# ============= ENDPOINTS CLOUD (FASE 4.0) =============
+
+@app.route("/api/cloud/deploy", methods=["POST"])
+def cloud_deploy():
+    """Deploy em nuvem"""
+    data = request.get_json()
+    provider_map = {p.value: p for p in CloudProvider}
+    provider = provider_map.get(data.get("provider", "aws"), CloudProvider.AWS)
+    result = jarvis_cloud.deploy_to_cloud(provider, data.get("config", {}))
+    return jsonify(result)
+
+@app.route("/api/cloud/create-cluster", methods=["POST"])
+def create_cluster():
+    """Cria cluster Kubernetes"""
+    data = request.get_json()
+    result = jarvis_cloud.create_kubernetes_cluster(
+        data.get("cluster_name"), data.get("node_count", 3)
+    )
+    return jsonify(result)
+
+@app.route("/api/cloud/auto-scaling", methods=["POST"])
+def auto_scaling():
+    """Configura auto-scaling"""
+    data = request.get_json()
+    result = jarvis_cloud.configure_auto_scaling(
+        data.get("deployment_id"), data.get("min_instances", 2), data.get("max_instances", 10)
+    )
+    return jsonify(result)
+
+@app.route("/api/cloud/health/<deployment_id>", methods=["GET"])
+def cloud_health(deployment_id):
+    """Saúde do deployment"""
+    return jsonify(jarvis_cloud.monitor_health(deployment_id))
+
+@app.route("/api/cloud/status", methods=["GET"])
+def cloud_status():
+    """Status da infraestrutura cloud"""
+    return jsonify(jarvis_cloud.get_cloud_status())
+
+# ============= ENDPOINTS ANALYTICS (FASE 4.0) =============
+
+@app.route("/api/analytics/create-dashboard", methods=["POST"])
+def create_dashboard():
+    """Cria dashboard"""
+    data = request.get_json()
+    result = jarvis_analytics.create_dashboard(
+        data.get("name"), data.get("widgets", [])
+    )
+    return jsonify(result)
+
+@app.route("/api/analytics/business-report", methods=["POST"])
+def business_report():
+    """Gera relatório de BI"""
+    data = request.get_json()
+    result = jarvis_analytics.generate_business_report(
+        data.get("report_type", "executive"), data.get("period_days", 30)
+    )
+    return jsonify(result)
+
+@app.route("/api/analytics/real-time-metrics", methods=["GET"])
+def real_time_metrics():
+    """Métricas em tempo real"""
+    return jsonify(jarvis_analytics.real_time_metrics())
+
+@app.route("/api/analytics/enterprise-status", methods=["GET"])
+def enterprise_analytics_status():
+    """Status do analytics corporativo"""
+    return jsonify(jarvis_analytics.get_analytics_status())
+
+# ============= ENDPOINTS COLLABORATION (FASE 4.0) =============
+
+@app.route("/api/collaboration/create-workspace", methods=["POST"])
+def create_workspace():
+    """Cria workspace"""
+    data = request.get_json()
+    result = jarvis_collaboration.create_workspace(
+        data.get("name"), data.get("owner")
+    )
+    return jsonify(result)
+
+@app.route("/api/collaboration/create-team", methods=["POST"])
+def create_team():
+    """Cria equipe"""
+    data = request.get_json()
+    result = jarvis_collaboration.create_team(
+        data.get("team_name"), data.get("lead"), data.get("members", [])
+    )
+    return jsonify(result)
+
+@app.route("/api/collaboration/status", methods=["GET"])
+def collaboration_status():
+    """Status de colaboração"""
+    return jsonify(jarvis_collaboration.get_collaboration_status())
+
+# ============= ENDPOINTS CI/CD (FASE 4.0) =============
+
+@app.route("/api/cicd/create-pipeline", methods=["POST"])
+def create_pipeline():
+    """Cria pipeline CI/CD"""
+    data = request.get_json()
+    result = jarvis_cicd.create_pipeline(
+        data.get("name"), data.get("repository")
+    )
+    return jsonify(result)
+
+@app.route("/api/cicd/run-pipeline", methods=["POST"])
+def run_pipeline():
+    """Executa pipeline"""
+    data = request.get_json()
+    result = jarvis_cicd.run_pipeline(
+        data.get("pipeline_id"), data.get("commit_hash")
+    )
+    return jsonify(result)
+
+@app.route("/api/cicd/run-tests", methods=["POST"])
+def run_tests():
+    """Executa testes automatizados"""
+    data = request.get_json()
+    result = jarvis_cicd.run_automated_tests(data.get("test_suite", "full"))
+    return jsonify(result)
+
+@app.route("/api/cicd/deploy", methods=["POST"])
+def cicd_deploy():
+    """Deploy de versão"""
+    data = request.get_json()
+    result = jarvis_cicd.deploy_version(
+        data.get("version"), data.get("environment", "production")
+    )
+    return jsonify(result)
+
+@app.route("/api/cicd/rollback", methods=["POST"])
+def cicd_rollback():
+    """Rollback de deployment"""
+    data = request.get_json()
+    result = jarvis_cicd.rollback(data.get("deployment_id"))
+    return jsonify(result)
+
+@app.route("/api/cicd/status", methods=["GET"])
+def cicd_status():
+    """Status do CI/CD"""
+    return jsonify(jarvis_cicd.get_cicd_status())
 
 # ============= ERROR HANDLERS =============
 
