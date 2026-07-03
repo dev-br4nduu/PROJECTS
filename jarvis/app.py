@@ -635,6 +635,151 @@ def learning_status():
     """Status do sistema de aprendizado"""
     return jsonify(jarvis_learning.get_learning_status())
 
+# ============= ENDPOINTS RAG MEMORY & FEEDBACK (REAL LEARNING) =============
+
+@app.route("/api/rag/remember", methods=["POST"])
+def rag_remember():
+    """Armazena uma troca (pergunta/resposta) na memória vetorial."""
+    data = request.get_json()
+    result = jarvis_ai.rag.remember(
+        data.get("prompt", ""), data.get("response", ""), data.get("metadata")
+    )
+    return jsonify(result)
+
+@app.route("/api/rag/remember-preference", methods=["POST"])
+def rag_remember_preference():
+    """Registra uma preferência explícita do usuário."""
+    data = request.get_json()
+    result = jarvis_ai.rag.remember_preference(data.get("statement", ""))
+    return jsonify(result)
+
+@app.route("/api/rag/search", methods=["POST"])
+def rag_search():
+    """Busca semântica na memória de longo prazo."""
+    data = request.get_json()
+    hits = jarvis_ai.rag.retrieve(
+        data.get("query", ""), top_k=data.get("top_k", 5)
+    )
+    return jsonify({"query": data.get("query"), "results": hits})
+
+@app.route("/api/rag/context", methods=["POST"])
+def rag_context():
+    """Retorna o contexto que seria injetado no prompt para uma query."""
+    data = request.get_json()
+    return jsonify({"context": jarvis_ai.rag.build_context(
+        data.get("query", ""), top_k=data.get("top_k", 5)
+    )})
+
+@app.route("/api/feedback/explicit", methods=["POST"])
+def feedback_explicit():
+    """Registra feedback explícito (rating 1-5, correção opcional)."""
+    data = request.get_json()
+    result = jarvis_ai.rag.feedback.record_explicit(
+        data.get("prompt", ""), data.get("response", ""),
+        data.get("rating", 3), data.get("correction")
+    )
+    return jsonify(result)
+
+@app.route("/api/feedback/implicit", methods=["POST"])
+def feedback_implicit():
+    """Registra sinal implícito (accepted, rephrased, copied, etc)."""
+    data = request.get_json()
+    result = jarvis_ai.rag.feedback.record_implicit(
+        data.get("prompt", ""), data.get("response", ""),
+        data.get("signal", "neutral")
+    )
+    return jsonify(result)
+
+@app.route("/api/feedback/export/<kind>", methods=["POST"])
+def feedback_export(kind):
+    """Exporta dataset de treino em JSONL. kind: classification | preference."""
+    path = jarvis_ai.rag.feedback.write_jsonl(kind)
+    return jsonify({"kind": kind, "path": path})
+
+@app.route("/api/rag/stats", methods=["GET"])
+def rag_stats():
+    """Estatísticas da memória e do feedback."""
+    return jsonify(jarvis_ai.rag.stats())
+
+# ============= ENDPOINTS TRAINING (REAL MODEL WEIGHT TRAINING) =============
+
+# Trainer do classificador de qualidade (rede neural numpy from scratch)
+_quality_trainer = {"instance": None}
+
+@app.route("/api/training/train-classifier", methods=["POST"])
+def train_classifier():
+    """
+    Treina o classificador de qualidade de resposta (rede neural real, CPU).
+    Usa o dataset exportado do feedback + seed data se necessário.
+    """
+    from jarvis.training.mlp_trainer import QualityClassifierTrainer
+    from jarvis.training.seed_data import write_seed_dataset
+    import os
+
+    data = request.get_json() or {}
+    dataset_path = data.get("dataset_path")
+
+    # Se não houver dataset, gera dataset seed + feedback capturado
+    if not dataset_path or not os.path.exists(dataset_path):
+        dataset_path = write_seed_dataset("jarvis_data/quality_dataset.jsonl")
+
+    trainer = QualityClassifierTrainer(
+        feature_dim=data.get("feature_dim", 512),
+        hidden_dim=data.get("hidden_dim", 64),
+    )
+    try:
+        result = trainer.train(
+            dataset_path, epochs=data.get("epochs", 150),
+            lr=data.get("lr", 0.5), verbose=False,
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    trainer.save("jarvis_data/quality_model.npz")
+    _quality_trainer["instance"] = trainer
+
+    # Retorna sem o histórico completo (grande); só métricas-chave
+    result.pop("history", None)
+    return jsonify({**result, "model_saved": "jarvis_data/quality_model.npz"})
+
+@app.route("/api/training/predict-quality", methods=["POST"])
+def predict_quality():
+    """Classifica a qualidade de uma resposta usando o modelo treinado."""
+    from jarvis.training.mlp_trainer import QualityClassifierTrainer
+    import os
+
+    trainer = _quality_trainer["instance"]
+    if trainer is None:
+        if not os.path.exists("jarvis_data/quality_model.npz"):
+            return jsonify({"error": "No trained model. Call /api/training/train-classifier first."}), 400
+        trainer = QualityClassifierTrainer()
+        trainer.load("jarvis_data/quality_model.npz")
+        _quality_trainer["instance"] = trainer
+
+    data = request.get_json()
+    text = data.get("text", "")
+    return jsonify(trainer.predict(text))
+
+@app.route("/api/training/lora-info", methods=["GET"])
+def lora_info():
+    """Informa como rodar o fine-tuning LoRA de um LLM aberto (requer GPU)."""
+    from jarvis.training import lora_finetune
+    deps_available = True
+    try:
+        lora_finetune._check_deps()
+    except ImportError:
+        deps_available = False
+    return jsonify({
+        "description": "Real LLM weight training via LoRA (SFT + DPO)",
+        "base_model": lora_finetune.DEFAULT_BASE_MODEL,
+        "gpu_stack_available": deps_available,
+        "requirements": ["GPU", "transformers", "peft", "trl", "HuggingFace access"],
+        "commands": {
+            "sft": "python -m jarvis.training.lora_finetune --mode sft --data jarvis_data/dataset_classification.jsonl",
+            "dpo": "python -m jarvis.training.lora_finetune --mode dpo --data jarvis_data/dataset_preference.jsonl",
+        },
+    })
+
 # ============= ENDPOINTS ENTERPRISE SECURITY (FASE 4.0) =============
 
 @app.route("/api/enterprise/register", methods=["POST"])

@@ -13,6 +13,11 @@ env/
 *.sqlite
 *.sqlite3
 
+# Learning/training runtime data (memory, feedback, trained weights, datasets)
+jarvis_data/
+*.npz
+*.npy
+
 # Environment
 .env
 

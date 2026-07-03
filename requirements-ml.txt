@@ -1,0 +1,16 @@
+# Stack pesado para treino de pesos de LLM (LoRA/DPO) — requer GPU.
+# Instale APENAS num ambiente com GPU e acesso ao HuggingFace Hub:
+#   pip install -r requirements-ml.txt
+#
+# Depois:
+#   python -m jarvis.training.lora_finetune --mode sft --data jarvis_data/dataset_classification.jsonl
+#   python -m jarvis.training.lora_finetune --mode dpo --data jarvis_data/dataset_preference.jsonl
+
+torch>=2.1
+transformers>=4.44
+peft>=0.12
+trl>=0.11
+accelerate>=0.34
+datasets>=2.20
+bitsandbytes>=0.43        # quantização 4-bit (QLoRA) — opcional
+sentence-transformers>=2.2  # embeddings neurais para o RAG
