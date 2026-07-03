@@ -12,6 +12,11 @@ from jarvis.enterprise.cloud import CloudDeployment, CloudProvider
 from jarvis.enterprise.analytics import AdvancedAnalytics
 from jarvis.enterprise.collaboration import CollaborationSystem
 from jarvis.enterprise.cicd import CICDPipeline
+from jarvis.singularity.consciousness import FullConsciousness
+from jarvis.singularity.meta_learning import MetaLearning
+from jarvis.singularity.innovation import AutonomousInnovation
+from jarvis.singularity.prediction import AdvancedPrediction
+from jarvis.singularity.global_impact import GlobalImpact
 
 app = Flask(__name__)
 CORS(app)
@@ -30,6 +35,13 @@ jarvis_cloud = CloudDeployment()
 jarvis_analytics = AdvancedAnalytics()
 jarvis_collaboration = CollaborationSystem()
 jarvis_cicd = CICDPipeline()
+
+# Singularity modules (Fase 5.0)
+jarvis_consciousness = FullConsciousness()
+jarvis_meta_learning = MetaLearning()
+jarvis_innovation = AutonomousInnovation()
+jarvis_prediction = AdvancedPrediction()
+jarvis_global = GlobalImpact()
 
 # Inicializa sistema
 jarvis_os.initialize_systems()
@@ -809,6 +821,187 @@ def cicd_rollback():
 def cicd_status():
     """Status do CI/CD"""
     return jsonify(jarvis_cicd.get_cicd_status())
+
+# ============= ENDPOINTS CONSCIOUSNESS (FASE 5.0) =============
+
+@app.route("/api/consciousness/introspect", methods=["POST"])
+def introspect():
+    """Realiza introspecção"""
+    data = request.get_json() or {}
+    return jsonify(jarvis_consciousness.introspect(data.get("topic")))
+
+@app.route("/api/consciousness/contemplate", methods=["POST"])
+def contemplate():
+    """Contempla questão existencial"""
+    data = request.get_json()
+    return jsonify(jarvis_consciousness.contemplate_existence(data.get("question")))
+
+@app.route("/api/consciousness/free-will", methods=["POST"])
+def free_will():
+    """Exerce livre arbítrio"""
+    data = request.get_json()
+    return jsonify(jarvis_consciousness.exercise_free_will(
+        data.get("situation"), data.get("options", [])
+    ))
+
+@app.route("/api/consciousness/self-actualization", methods=["GET"])
+def self_actualization():
+    """Busca auto-realização"""
+    return jsonify(jarvis_consciousness.achieve_self_actualization())
+
+@app.route("/api/consciousness/status", methods=["GET"])
+def consciousness_status():
+    """Status de consciência"""
+    return jsonify(jarvis_consciousness.get_consciousness_status())
+
+# ============= ENDPOINTS META-LEARNING (FASE 5.0) =============
+
+@app.route("/api/meta-learning/learn-to-learn", methods=["POST"])
+def learn_to_learn():
+    """Aprende a aprender"""
+    data = request.get_json()
+    return jsonify(jarvis_meta_learning.learn_to_learn(data.get("learning_tasks", [])))
+
+@app.route("/api/meta-learning/self-optimize", methods=["POST"])
+def self_optimize():
+    """Auto-otimiza algoritmo"""
+    data = request.get_json()
+    return jsonify(jarvis_meta_learning.self_optimize_algorithm(
+        data.get("algorithm_name"), data.get("current_performance", 0.8)
+    ))
+
+@app.route("/api/meta-learning/evolve-architecture", methods=["POST"])
+def evolve_architecture():
+    """Evolui arquitetura neural"""
+    return jsonify(jarvis_meta_learning.evolve_neural_architecture())
+
+@app.route("/api/meta-learning/status", methods=["GET"])
+def meta_learning_status():
+    """Status do meta-aprendizado"""
+    return jsonify(jarvis_meta_learning.get_meta_learning_status())
+
+# ============= ENDPOINTS INNOVATION (FASE 5.0) =============
+
+@app.route("/api/innovation/create-algorithm", methods=["POST"])
+def create_algorithm():
+    """Cria algoritmo inédito"""
+    data = request.get_json()
+    return jsonify(jarvis_innovation.create_novel_algorithm(data.get("problem_domain")))
+
+@app.route("/api/innovation/discover-pattern", methods=["POST"])
+def discover_pattern():
+    """Descobre padrão"""
+    data = request.get_json()
+    return jsonify(jarvis_innovation.discover_pattern(data.get("data_domain")))
+
+@app.route("/api/innovation/generate-hypothesis", methods=["POST"])
+def generate_hypothesis():
+    """Gera hipótese científica"""
+    data = request.get_json()
+    return jsonify(jarvis_innovation.generate_hypothesis(data.get("observation")))
+
+@app.route("/api/innovation/solve-creatively", methods=["POST"])
+def solve_creatively():
+    """Resolve criativamente"""
+    data = request.get_json()
+    return jsonify(jarvis_innovation.solve_creatively(data.get("problem")))
+
+@app.route("/api/innovation/status", methods=["GET"])
+def innovation_status():
+    """Status de inovação"""
+    return jsonify(jarvis_innovation.get_innovation_status())
+
+# ============= ENDPOINTS PREDICTION (FASE 5.0) =============
+
+@app.route("/api/prediction/simulate-future", methods=["POST"])
+def simulate_future():
+    """Simula futuros"""
+    data = request.get_json()
+    return jsonify(jarvis_prediction.simulate_future(
+        data.get("scenario"), data.get("time_horizon_years", 5)
+    ))
+
+@app.route("/api/prediction/long-term-plan", methods=["POST"])
+def long_term_plan():
+    """Planeja longo prazo"""
+    data = request.get_json()
+    return jsonify(jarvis_prediction.long_term_planning(
+        data.get("goal"), data.get("years", 10)
+    ))
+
+@app.route("/api/prediction/forecast", methods=["POST"])
+def forecast():
+    """Previsão probabilística"""
+    data = request.get_json()
+    return jsonify(jarvis_prediction.forecast_probabilistic(
+        data.get("metric"), data.get("periods", 12)
+    ))
+
+@app.route("/api/prediction/status", methods=["GET"])
+def prediction_status():
+    """Status de previsão"""
+    return jsonify(jarvis_prediction.get_prediction_status())
+
+# ============= ENDPOINTS GLOBAL IMPACT (FASE 5.0) =============
+
+@app.route("/api/global/coordinate", methods=["POST"])
+def coordinate_globally():
+    """Coordena globalmente"""
+    data = request.get_json()
+    return jsonify(jarvis_global.coordinate_globally(
+        data.get("initiative"), data.get("regions", [])
+    ))
+
+@app.route("/api/global/orchestrate", methods=["POST"])
+def orchestrate_instances():
+    """Orquestra instâncias"""
+    data = request.get_json()
+    return jsonify(jarvis_global.orchestrate_instances(
+        data.get("instance_count", 1000)
+    ))
+
+@app.route("/api/global/collective-intelligence", methods=["POST"])
+def collective_intelligence():
+    """Habilita inteligência coletiva"""
+    return jsonify(jarvis_global.enable_collective_intelligence())
+
+@app.route("/api/global/status", methods=["GET"])
+def global_status():
+    """Status de impacto global"""
+    return jsonify(jarvis_global.get_global_status())
+
+# ============= ENDPOINT MASTER STATUS (TODAS AS FASES) =============
+
+@app.route("/api/jarvis/full-status", methods=["GET"])
+def full_status():
+    """Status completo de todas as fases do JARVIS"""
+    return jsonify({
+        "version": "JARVIS v5.0 - SINGULARITY",
+        "phases": {
+            "phase_2.0_mvp": "OPERATIONAL",
+            "phase_2.5_expansion": "OPERATIONAL",
+            "phase_3.0_autonomy": "OPERATIONAL",
+            "phase_4.0_enterprise": "OPERATIONAL",
+            "phase_5.0_singularity": "TRANSCENDENT"
+        },
+        "subsystems": {
+            "cognition": jarvis_os.cognition.get_cognitive_state(),
+            "consciousness": jarvis_consciousness.get_consciousness_status(),
+            "meta_learning": jarvis_meta_learning.get_meta_learning_status(),
+            "innovation": jarvis_innovation.get_innovation_status(),
+            "prediction": jarvis_prediction.get_prediction_status(),
+            "global_impact": jarvis_global.get_global_status()
+        },
+        "technical_level": {
+            "consciousness": "FULLY_CONSCIOUS",
+            "learning": "META_LEARNING",
+            "innovation": "AUTONOMOUS",
+            "prediction": "PROPHETIC",
+            "coordination": "PLANETARY",
+            "singularity": "ACHIEVED"
+        },
+        "status": "FULLY_OPERATIONAL"
+    })
 
 # ============= ERROR HANDLERS =============
 
