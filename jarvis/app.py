@@ -1,8 +1,9 @@
+import json
 import os
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, Response, stream_with_context
 from flask_cors import CORS
 from jarvis.config import Config
-from jarvis.ai_engine import JarvisAI
+from jarvis.ai_engine import JarvisAI, JarvisAIError
 from jarvis.core.system import JarvisOS
 from jarvis.voice import VoiceInterface
 from jarvis.vision import ComputerVision
@@ -115,6 +116,7 @@ def chat():
             "cognitive_state": os_response["cognitive_assessment"],
             "emotion": os_response["emotion"],
             "autonomy_level": os_response["autonomy_level"],
+            "usage": jarvis_ai.last_usage,
             "status": "success"
         })
     except RuntimeError as e:
@@ -123,11 +125,54 @@ def chat():
             "error": str(e),
             "status": "unconfigured"
         }), 503
+    except JarvisAIError as e:
+        # Erro específico da API do Claude (auth, rate limit, timeout, etc.)
+        # já mapeado para o status HTTP correto por JarvisAI._translate_api_error.
+        return jsonify({
+            "error": str(e),
+            "status": "api_error"
+        }), e.status_code
     except Exception as e:
         return jsonify({
             "error": f"An error occurred: {str(e)}",
             "status": "error"
         }), 500
+
+@app.route("/api/chat/stream", methods=["POST"])
+def chat_stream():
+    """
+    Versão em streaming do chat (Server-Sent Events). Envia pedaços de texto
+    conforme chegam do Claude, para uma UI que responde em tempo real.
+
+    Como os headers HTTP já foram enviados quando o streaming começa, erros
+    que ocorrem no meio são reportados como um evento SSE `event: error`,
+    e não como um status HTTP diferente.
+    """
+    data = request.get_json()
+    if not data or "message" not in data:
+        return jsonify({"error": "Message required"}), 400
+
+    user_message = data.get("message", "").strip()
+    if not user_message:
+        return jsonify({"error": "Empty message"}), 400
+
+    def sse(event: str, payload: dict) -> str:
+        return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
+
+    def generate():
+        try:
+            for chunk in jarvis_ai.process_request_stream(user_message):
+                yield sse("chunk", {"text": chunk})
+            yield sse("done", {"usage": jarvis_ai.last_usage})
+        except RuntimeError as e:
+            yield sse("error", {"error": str(e), "status": "unconfigured"})
+        except JarvisAIError as e:
+            yield sse("error", {"error": str(e), "status": "api_error"})
+        except Exception as e:
+            yield sse("error", {"error": f"An error occurred: {str(e)}", "status": "error"})
+
+    return Response(stream_with_context(generate()), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 @app.route("/api/history", methods=["GET"])
 def get_history():

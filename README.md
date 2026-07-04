@@ -53,6 +53,23 @@ A cada conversa, o JARVIS:
 
 Detalhes e provas em [`REAL_LEARNING.md`](REAL_LEARNING.md).
 
+### Chat robusto: streaming, prompt caching e erros claros
+
+- **Streaming (SSE):** a UI consome `/api/chat/stream` e mostra a resposta
+  token a token; se o navegador não suportar, cai automaticamente para o
+  endpoint bloqueante `/api/chat`.
+- **Prompt caching:** o system prompt (personalidade fixa do Jarvis) e o
+  prefixo da conversa são marcados com `cache_control` seguindo o padrão
+  documentado da Anthropic. *Nota honesta:* a Anthropic só efetiva o cache
+  acima de um piso de tokens (~1024 para Sonnet/Opus) — o system prompt sozinho
+  (~160 tokens) fica abaixo disso, então quem realmente passa a economizar é o
+  **prefixo da conversa**, à medida que ela cresce ao longo dos turnos. As
+  métricas reais (`cache_read_input_tokens`, `cache_creation_input_tokens`)
+  vêm no campo `usage` da resposta de `/api/chat`.
+- **Erros específicos da API:** falhas de autenticação, rate limit, timeout e
+  indisponibilidade do Claude são mapeadas para o status HTTP correto (401,
+  429, 504, 503...) em vez de um 500 genérico.
+
 ### Treinar pesos de modelo (exercício de ML)
 ```bash
 # Rede neural treinada do zero em numpy (roda em CPU):
@@ -89,7 +106,8 @@ docker compose up --build      # sobe JARVIS + Redis + PostgreSQL + Nginx
 | `GET /` | Interface web do JARVIS |
 | `GET /health` | Health check (JSON) |
 | `GET /api` | Metadata e contagem de endpoints |
-| `POST /api/chat` | Conversa com o Claude (usa memória) |
+| `POST /api/chat` | Conversa com o Claude (bloqueante, usa memória) |
+| `POST /api/chat/stream` | Mesmo chat, em streaming (SSE) |
 | `POST /api/rag/search` | Busca semântica na memória |
 | `POST /api/rag/remember-preference` | Registra uma preferência |
 | `POST /api/feedback/explicit` | Feedback (rating/correção) → ajusta memória |
@@ -104,7 +122,7 @@ Referência completa: [`API_QUICK_REFERENCE.md`](API_QUICK_REFERENCE.md).
 
 ```
 jarvis/
-├── app.py                 # API Flask (118 endpoints) + serve a UI
+├── app.py                 # API Flask (119 endpoints) + serve a UI
 ├── ai_engine.py           # Chat com Claude + memória RAG
 ├── config.py              # Configuração (lê .env)
 ├── learning/              # * Aprendizado real: embeddings, memória vetorial,
