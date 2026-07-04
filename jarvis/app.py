@@ -1,4 +1,5 @@
-from flask import Flask, jsonify, request
+import os
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from jarvis.config import Config
 from jarvis.ai_engine import JarvisAI
@@ -18,7 +19,10 @@ from jarvis.singularity.innovation import AutonomousInnovation
 from jarvis.singularity.prediction import AdvancedPrediction
 from jarvis.singularity.global_impact import GlobalImpact
 
-app = Flask(__name__)
+# A pasta static/ fica na raiz do projeto (um nível acima de jarvis/).
+_STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
+
+app = Flask(__name__, static_folder=_STATIC_DIR, static_url_path="/static")
 CORS(app)
 app.config.from_object(Config)
 
@@ -50,12 +54,37 @@ jarvis_os.initialize_systems()
 
 @app.route("/", methods=["GET"])
 def home():
-    """Endpoint inicial"""
+    """Serve a interface web do JARVIS (static/index.html)."""
+    index_path = os.path.join(_STATIC_DIR, "index.html")
+    if os.path.exists(index_path):
+        return send_from_directory(_STATIC_DIR, "index.html")
+    # Fallback: se a UI não existir, retorna a metadata da API.
     return jsonify({
         "name": Config.JARVIS_NAME,
         "greeting": Config.JARVIS_GREETING,
         "status": "Online and ready to assist",
-        "version": "JARVIS v2.0 - Cognitive Operating System"
+    })
+
+@app.route("/api", methods=["GET"])
+def api_info():
+    """Metadata da API e ponteiros úteis."""
+    return jsonify({
+        "name": Config.JARVIS_NAME,
+        "greeting": Config.JARVIS_GREETING,
+        "status": "Online and ready to assist",
+        "version": "JARVIS - Cognitive Operating System",
+        "endpoints_count": len(list(app.url_map.iter_rules())),
+        "web_ui": "/",
+        "health": "/health",
+    })
+
+@app.route("/health", methods=["GET"])
+def health():
+    """Health check para orquestradores (Docker/K8s) e monitoramento."""
+    return jsonify({
+        "status": "healthy",
+        "chat_configured": bool(Config.ANTHROPIC_API_KEY),
+        "model": Config.MODEL,
     })
 
 @app.route("/api/chat", methods=["POST"])
@@ -88,6 +117,12 @@ def chat():
             "autonomy_level": os_response["autonomy_level"],
             "status": "success"
         })
+    except RuntimeError as e:
+        # Tipicamente: ANTHROPIC_API_KEY ausente. 503 = serviço indisponível.
+        return jsonify({
+            "error": str(e),
+            "status": "unconfigured"
+        }), 503
     except Exception as e:
         return jsonify({
             "error": f"An error occurred: {str(e)}",
@@ -681,9 +716,13 @@ def rag_context():
 
 @app.route("/api/feedback/explicit", methods=["POST"])
 def feedback_explicit():
-    """Registra feedback explícito (rating 1-5, correção opcional)."""
+    """
+    Registra feedback explícito (rating 1-5, correção opcional) E fecha o loop:
+    ajusta o score de qualidade da memória para priorizar/despriorizar a resposta
+    em buscas futuras.
+    """
     data = request.get_json()
-    result = jarvis_ai.rag.feedback.record_explicit(
+    result = jarvis_ai.rag.apply_feedback(
         data.get("prompt", ""), data.get("response", ""),
         data.get("rating", 3), data.get("correction")
     )

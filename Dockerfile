@@ -28,7 +28,7 @@ EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:5000/')" || exit 1
+    CMD python -c "import requests; requests.get('http://localhost:5000/health').raise_for_status()" || exit 1
 
 # Run application
 CMD ["python", "run.py"]

@@ -21,6 +21,11 @@ jarvis_data/
 # Environment
 .env
 
+# Test / tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
 # IDE
 .vscode/
 .idea/

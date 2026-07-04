@@ -60,11 +60,32 @@ class VectorMemory:
                 text TEXT NOT NULL,
                 role TEXT,
                 metadata TEXT,
-                created_at TEXT
+                created_at TEXT,
+                score REAL DEFAULT 0
             )
         """)
+        # Migração segura: adiciona `score` a bancos criados antes desta coluna.
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(memories)").fetchall()]
+        if "score" not in cols:
+            conn.execute("ALTER TABLE memories ADD COLUMN score REAL DEFAULT 0")
         conn.commit()
         conn.close()
+
+    def adjust_score(self, text: str, delta: float) -> bool:
+        """
+        Ajusta o score de qualidade da memória mais recente com este texto.
+        Usado pelo loop de feedback: rating negativo baixa o score (a memória
+        passa a ser despriorizada na busca), positivo o aumenta.
+        """
+        conn = sqlite3.connect(self.db_path)
+        row = conn.execute(
+            "SELECT id FROM memories WHERE text = ? ORDER BY id DESC LIMIT 1", (text,)
+        ).fetchone()
+        if row:
+            conn.execute("UPDATE memories SET score = score + ? WHERE id = ?", (delta, row[0]))
+            conn.commit()
+        conn.close()
+        return row is not None
 
     def _load_vectors(self) -> None:
         if os.path.exists(self.vectors_path):
@@ -138,8 +159,12 @@ class VectorMemory:
         return {"id": mem_id, "indexed": True, "backend": self.backend.name}
 
     def search(self, query: str, top_k: int = 5,
-               min_similarity: float = 0.0) -> List[Dict[str, Any]]:
-        """Return the top_k most semantically similar memories to the query."""
+               min_similarity: float = 0.0,
+               score_weight: float = 0.15) -> List[Dict[str, Any]]:
+        """
+        Return the top_k memories, ranked by semantic similarity blended with
+        the feedback quality score (score_weight controls the feedback influence).
+        """
         if self._vectors is None or len(self._ids) == 0:
             return []
         if not getattr(self.backend, "is_fitted", True):
@@ -150,17 +175,26 @@ class VectorMemory:
         qvec = self.backend.encode([query])[0]  # [dim]
         # Cosine similarity == dot product (vectors are L2-normalized).
         sims = self._vectors @ qvec  # [n]
-        order = np.argsort(-sims)[:top_k]
 
-        results = []
+        # Loop de feedback: mistura o score de qualidade na relevância. Memórias
+        # bem avaliadas sobem, mal avaliadas descem. tanh limita a influência.
         conn = sqlite3.connect(self.db_path)
-        for idx in order:
-            score = float(sims[idx])
-            if score < min_similarity:
+        id_to_score = dict(conn.execute("SELECT id, score FROM memories").fetchall())
+        feedback_scores = np.array(
+            [id_to_score.get(mid, 0.0) or 0.0 for mid in self._ids], dtype=np.float32
+        )
+        effective = sims + score_weight * np.tanh(feedback_scores)
+
+        # Gate de relevância na similaridade base; ordenação pela efetiva.
+        candidate_order = np.argsort(-effective)
+        results = []
+        for idx in candidate_order:
+            base_sim = float(sims[idx])
+            if base_sim < min_similarity:
                 continue
             mem_id = self._ids[idx]
             row = conn.execute(
-                "SELECT text, role, metadata, created_at FROM memories WHERE id=?",
+                "SELECT text, role, metadata, created_at, score FROM memories WHERE id=?",
                 (mem_id,),
             ).fetchone()
             if row:
@@ -170,8 +204,12 @@ class VectorMemory:
                     "role": row[1],
                     "metadata": json.loads(row[2]),
                     "created_at": row[3],
-                    "similarity": round(score, 4),
+                    "similarity": round(base_sim, 4),
+                    "quality_score": round(float(row[4] or 0.0), 3),
+                    "effective_score": round(float(effective[idx]), 4),
                 })
+            if len(results) >= top_k:
+                break
         conn.close()
         return results
 

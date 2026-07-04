@@ -1,0 +1,5 @@
+# Dependências de desenvolvimento/teste.
+#   pip install -r requirements-dev.txt
+#   pytest tests/ -q
+-r requirements.txt
+pytest>=7.4

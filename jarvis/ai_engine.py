@@ -16,11 +16,25 @@ class JarvisAI:
     """
 
     def __init__(self, use_memory: bool = True, data_dir: str = "jarvis_data"):
-        self.client = Anthropic()
+        # Cliente criado sob demanda: a app sobe e serve os demais endpoints
+        # (RAG, treino, subsistemas) mesmo sem ANTHROPIC_API_KEY configurada.
+        self._client = None
         self.conversation_history = []
-        self.model = "claude-3-5-sonnet-20241022"
+        self.model = Config.MODEL
         self.use_memory = use_memory
         self.rag = RAGMemory(data_dir=data_dir) if use_memory else None
+
+    @property
+    def client(self) -> Anthropic:
+        """Instancia o cliente Anthropic sob demanda, com erro claro se faltar a chave."""
+        if self._client is None:
+            if not Config.ANTHROPIC_API_KEY:
+                raise RuntimeError(
+                    "ANTHROPIC_API_KEY não configurada. Defina-a no arquivo .env "
+                    "(veja .env.example) para usar o chat com o Claude."
+                )
+            self._client = Anthropic(api_key=Config.ANTHROPIC_API_KEY)
+        return self._client
 
     def reset_conversation(self):
         """Limpa o histórico da sessão (a memória de longo prazo persiste)."""

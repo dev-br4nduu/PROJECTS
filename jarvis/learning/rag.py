@@ -49,6 +49,29 @@ class RAGMemory:
         """Return memories semantically relevant to the query."""
         return self.memory.search(query, top_k=top_k, min_similarity=min_similarity)
 
+    def apply_feedback(self, prompt: str, response: str, rating: int,
+                       correction: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Fecha o loop feedback -> retrieval.
+
+        Registra o feedback E ajusta o score de qualidade da memória da resposta:
+        rating alto sobe o score (a resposta passa a ser priorizada como bom
+        exemplo), rating baixo desce (passa a ser despriorizada/evitada).
+        """
+        fb = self.feedback.record_explicit(prompt, response, rating, correction)
+        # Mapeia rating -> delta de score. 5->+1.0, 3->0, 1->-1.0 (escala 1-5).
+        delta = (rating - 3) / 2.0
+        # Propaga o sinal ao par inteiro: memória da resposta E do prompt.
+        adjusted_resp = self.memory.adjust_score(response, delta)
+        if prompt:
+            self.memory.adjust_score(prompt, delta)
+        # Se houve correção, a resposta corrigida entra como memória bem avaliada.
+        if correction:
+            self.memory.add(correction, role="assistant",
+                            metadata={"kind": "correction", "for_prompt": prompt})
+            self.memory.adjust_score(correction, 1.0)
+        return {**fb, "memory_score_adjusted": adjusted_resp, "score_delta": delta}
+
     def build_context(self, query: str, top_k: int = 5) -> str:
         """Build a text block of relevant memories to inject into a prompt."""
         hits = self.retrieve(query, top_k=top_k)

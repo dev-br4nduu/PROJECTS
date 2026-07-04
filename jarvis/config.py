@@ -8,6 +8,8 @@ class Config:
 
     # API Configuration
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+    # Modelo configurável via env; default estável e amplamente disponível.
+    MODEL = os.getenv("JARVIS_MODEL", "claude-3-5-sonnet-20241022")
 
     # Flask Configuration
     FLASK_ENV = os.getenv("FLASK_ENV", "development")

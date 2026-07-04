@@ -170,11 +170,16 @@ class FeedbackStore:
 
     @staticmethod
     def _rating_to_label(rating: int) -> str:
+        """
+        Mapeia rating numa escala 1-5 para rótulo.
+        Para polegar, o chamador deve mapear: 👍 -> 5, 👎 -> 1.
+        (Antes havia um bug que tratava rating==1 como polegar-para-cima.)
+        """
         if rating is None:
             return "neutral"
-        if rating >= 4 or rating == 1:   # 4-5 stars, or thumbs-up (1)
-            return "positive" if rating >= 4 or rating == 1 else "neutral"
-        if rating <= 2:                  # 1-2 stars, or thumbs-down (0)
+        if rating >= 4:
+            return "positive"
+        if rating <= 2:
             return "negative"
         return "neutral"
 
