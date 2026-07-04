@@ -276,3 +276,44 @@ body {
         font-size: 0.9em;
     }
 }
+
+/* Barra de feedback (👍/👎) nas respostas do JARVIS */
+.feedback-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.feedback-btn {
+    background: rgba(100, 150, 200, 0.12);
+    border: 1px solid rgba(100, 150, 200, 0.3);
+    border-radius: 8px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 1em;
+    line-height: 1;
+    transition: all 0.2s ease;
+}
+
+.feedback-btn:hover:not(:disabled) {
+    background: rgba(100, 150, 200, 0.25);
+    transform: translateY(-1px);
+}
+
+.feedback-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.feedback-btn.feedback-selected {
+    opacity: 1;
+    background: rgba(66, 165, 245, 0.35);
+    border-color: #64b5f6;
+}
+
+.feedback-thanks {
+    font-size: 0.8em;
+    color: #90a4c0;
+    font-style: italic;
+}

@@ -41,7 +41,8 @@ class JarvisChat {
             this.removeLoadingIndicator();
 
             if (response.ok) {
-                this.addJarvisMessage(data.jarvis);
+                // Passa o par (pergunta, resposta) para habilitar o feedback.
+                this.addJarvisMessage(data.jarvis, { prompt: message, response: data.jarvis });
             } else {
                 this.addJarvisMessage(`I apologize, sir. An error occurred: ${data.error}`);
             }
@@ -61,10 +62,51 @@ class JarvisChat {
         this.scrollToBottom();
     }
 
-    addJarvisMessage(message) {
+    addJarvisMessage(message, feedbackCtx = null) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message jarvis-message';
         messageDiv.innerHTML = `<p>${this.escapeHtml(message)}</p>`;
+
+        // Botões de feedback: 👍 (rating 5) / 👎 (rating 1). Ligam ao loop
+        // feedback->retrieval, ensinando o JARVIS a priorizar boas respostas.
+        if (feedbackCtx) {
+            const fb = document.createElement('div');
+            fb.className = 'feedback-bar';
+            const up = document.createElement('button');
+            up.className = 'feedback-btn';
+            up.textContent = '👍';
+            up.title = 'Boa resposta';
+            const down = document.createElement('button');
+            down.className = 'feedback-btn';
+            down.textContent = '👎';
+            down.title = 'Resposta ruim';
+
+            const send = async (rating, btn) => {
+                fb.querySelectorAll('.feedback-btn').forEach(b => b.disabled = true);
+                btn.classList.add('feedback-selected');
+                try {
+                    await fetch('/api/feedback/explicit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            prompt: feedbackCtx.prompt,
+                            response: feedbackCtx.response,
+                            rating
+                        })
+                    });
+                    fb.insertAdjacentHTML('beforeend',
+                        '<span class="feedback-thanks">obrigado, senhor</span>');
+                } catch (e) {
+                    fb.querySelectorAll('.feedback-btn').forEach(b => b.disabled = false);
+                }
+            };
+            up.addEventListener('click', () => send(5, up));
+            down.addEventListener('click', () => send(1, down));
+            fb.appendChild(up);
+            fb.appendChild(down);
+            messageDiv.appendChild(fb);
+        }
+
         this.chatMessages.appendChild(messageDiv);
         this.scrollToBottom();
     }
