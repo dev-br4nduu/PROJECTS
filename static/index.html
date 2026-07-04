@@ -7,11 +7,41 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="container">
+    <div class="hud-scanlines" aria-hidden="true"></div>
+
+    <div class="container hud-frame">
+        <span class="hud-corner hud-corner-tl" aria-hidden="true"></span>
+        <span class="hud-corner hud-corner-tr" aria-hidden="true"></span>
+        <span class="hud-corner hud-corner-bl" aria-hidden="true"></span>
+        <span class="hud-corner hud-corner-br" aria-hidden="true"></span>
+
         <header class="header">
+            <div class="hud-reticle" aria-hidden="true">
+                <span class="hud-reticle-ring hud-reticle-ring-1"></span>
+                <span class="hud-reticle-ring hud-reticle-ring-2"></span>
+            </div>
             <h1 class="title">JARVIS</h1>
-            <p class="subtitle">Personal Assistant</p>
-            <div class="status-indicator online"></div>
+            <p class="subtitle">Assistente Pessoal</p>
+            <div class="status-indicator online" id="statusIndicator" title="Online"></div>
+
+            <div class="hud-readout" id="hudReadout">
+                <div class="hud-stat">
+                    <span class="hud-stat-label">STATUS</span>
+                    <span class="hud-stat-value" id="hudStatus">ONLINE</span>
+                </div>
+                <div class="hud-stat">
+                    <span class="hud-stat-label">AUTONOMY</span>
+                    <span class="hud-stat-value" id="hudAutonomy">--</span>
+                </div>
+                <div class="hud-stat">
+                    <span class="hud-stat-label">EMOTION</span>
+                    <span class="hud-stat-value" id="hudEmotion">--</span>
+                </div>
+                <div class="hud-stat">
+                    <span class="hud-stat-label">CACHE</span>
+                    <span class="hud-stat-value" id="hudCache">--</span>
+                </div>
+            </div>
         </header>
 
         <main class="chat-container">
@@ -31,8 +61,8 @@
                     placeholder="Speak with Jarvis..."
                     autocomplete="off"
                 >
-                <button id="sendBtn" class="send-button">Send</button>
-                <button id="resetBtn" class="reset-button">Reset</button>
+                <button id="sendBtn" class="send-button">Enviar</button>
+                <button id="resetBtn" class="reset-button">Reiniciar</button>
             </div>
         </footer>
     </div>

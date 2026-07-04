@@ -39,6 +39,31 @@ Abra **http://localhost:5000** no navegador — a interface do JARVIS carrega al
 Sem a `ANTHROPIC_API_KEY`, tudo funciona **exceto** o chat, que responde
 `503` com uma mensagem clara pedindo a chave.
 
+### 🩺 Diagnosticando problemas com a chave
+
+Se o chat der erro de "chave inválida", acesse `http://localhost:5000/health`
+no navegador. Ele mostra (sem expor a chave completa):
+
+```json
+{
+  "chat_configured": true,
+  "api_key_preview": "sk-ant-a...cdef",
+  "api_key_length": 108,
+  "api_key_is_placeholder": false
+}
+```
+
+- `chat_configured: false` + `api_key_is_placeholder: true` → você esqueceu de
+  trocar o `your_api_key_here` do `.env` pela chave de verdade.
+- `api_key_length` muito curto ou zero → o `.env` não está sendo lido (verifique
+  se está na raiz do projeto, ao lado do `run.py`) ou a chave não foi colada.
+- Preview e tamanho corretos mas ainda dá erro 401 → a chave em si foi
+  revogada/expirada ou não tem créditos; gere uma nova em
+  https://console.anthropic.com/settings/keys.
+
+(Espaços e aspas acidentais ao colar a chave no `.env` são removidos
+automaticamente, então isso não costuma ser a causa.)
+
 ---
 
 ## 🧠 Aprendizado Real (o diferencial)

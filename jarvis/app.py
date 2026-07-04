@@ -81,10 +81,27 @@ def api_info():
 
 @app.route("/health", methods=["GET"])
 def health():
-    """Health check para orquestradores (Docker/K8s) e monitoramento."""
+    """
+    Health check para orquestradores (Docker/K8s) e monitoramento.
+
+    Inclui um preview MASCARADO da API key (nunca a chave completa) para
+    diagnosticar problemas comuns de configuração: chave vazia, placeholder
+    do .env.example esquecida, ou comprimento suspeito (copy-paste truncado).
+    """
+    key = Config.ANTHROPIC_API_KEY
+    if key:
+        preview = f"{key[:8]}...{key[-4:]}" if len(key) > 14 else "***"
+        looks_like_placeholder = key == "your_api_key_here"
+    else:
+        preview = None
+        looks_like_placeholder = False
+
     return jsonify({
         "status": "healthy",
-        "chat_configured": bool(Config.ANTHROPIC_API_KEY),
+        "chat_configured": bool(key) and not looks_like_placeholder,
+        "api_key_preview": preview,
+        "api_key_length": len(key) if key else 0,
+        "api_key_is_placeholder": looks_like_placeholder,
         "model": Config.MODEL,
     })
 
@@ -163,7 +180,18 @@ def chat_stream():
         try:
             for chunk in jarvis_ai.process_request_stream(user_message):
                 yield sse("chunk", {"text": chunk})
-            yield sse("done", {"usage": jarvis_ai.last_usage})
+            # Mesma telemetria cognitiva do endpoint bloqueante, para o HUD da
+            # UI mostrar dados reais (emoção, autonomia) também no streaming.
+            os_response = jarvis_os.process_request({
+                "type": "CONVERSATION",
+                "input": user_message
+            })
+            yield sse("done", {
+                "usage": jarvis_ai.last_usage,
+                "cognitive_state": os_response["cognitive_assessment"],
+                "emotion": os_response["emotion"],
+                "autonomy_level": os_response["autonomy_level"],
+            })
         except RuntimeError as e:
             yield sse("error", {"error": str(e), "status": "unconfigured"})
         except JarvisAIError as e:

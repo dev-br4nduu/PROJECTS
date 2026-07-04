@@ -6,12 +6,40 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #0a0e27 0%, #1a1a3e 100%);
+    background:
+        linear-gradient(rgba(100, 181, 246, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(100, 181, 246, 0.06) 1px, transparent 1px),
+        linear-gradient(135deg, #0a0e27 0%, #1a1a3e 100%);
+    background-size: 42px 42px, 42px 42px, cover;
     color: #e0e0e0;
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* Overlay de scanlines horizontais, estilo visor holográfico do HUD */
+.hud-scanlines {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    background: repeating-linear-gradient(
+        to bottom,
+        rgba(100, 181, 246, 0.035) 0px,
+        rgba(100, 181, 246, 0.035) 1px,
+        transparent 2px,
+        transparent 4px
+    );
+    mix-blend-mode: screen;
+    animation: hudScan 9s linear infinite;
+}
+
+@keyframes hudScan {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 400px; }
 }
 
 .container {
@@ -20,12 +48,29 @@ body {
     height: 90vh;
     background: rgba(15, 20, 45, 0.8);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(100, 150, 200, 0.3);
+    border: 1px solid rgba(100, 181, 246, 0.35);
     border-radius: 10px;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37), 0 0 40px rgba(100, 181, 246, 0.08);
+    position: relative;
 }
+
+/* Cantos angulares (bracket corners), o clássico frame de HUD tático */
+.hud-corner {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    border: 2px solid #64b5f6;
+    filter: drop-shadow(0 0 4px rgba(100, 181, 246, 0.7));
+    opacity: 0.85;
+    pointer-events: none;
+}
+
+.hud-corner-tl { top: -1px; left: -1px; border-right: none; border-bottom: none; border-radius: 10px 0 0 0; }
+.hud-corner-tr { top: -1px; right: -1px; border-left: none; border-bottom: none; border-radius: 0 10px 0 0; }
+.hud-corner-bl { bottom: -1px; left: -1px; border-right: none; border-top: none; border-radius: 0 0 0 10px; }
+.hud-corner-br { bottom: -1px; right: -1px; border-left: none; border-top: none; border-radius: 0 0 10px 0; }
 
 .header {
     padding: 30px;
@@ -35,21 +80,74 @@ body {
 }
 
 .title {
+    position: relative;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 2.5em;
     font-weight: 300;
-    letter-spacing: 3px;
+    letter-spacing: 6px;
     background: linear-gradient(135deg, #64b5f6 0%, #90caf9 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     text-shadow: 0 0 30px rgba(100, 150, 200, 0.5);
+    animation: hudFlicker 6s infinite;
+}
+
+@keyframes hudFlicker {
+    0%, 89%, 93%, 97%, 100% { opacity: 1; }
+    90%, 96% { opacity: 0.72; }
 }
 
 .subtitle {
     color: #a0a0c0;
     font-size: 0.9em;
     margin-top: 5px;
-    letter-spacing: 2px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-family: 'Consolas', 'Courier New', monospace;
+}
+
+/* Anéis concêntricos de retícula, decorativos, atrás do título */
+.hud-reticle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 180px;
+    height: 180px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.hud-reticle-ring {
+    position: absolute;
+    inset: 0;
+    border: 1px dashed rgba(100, 181, 246, 0.18);
+    border-radius: 50%;
+}
+
+.hud-reticle-ring-1 {
+    animation: hudSpin 40s linear infinite;
+}
+
+.hud-reticle-ring-2 {
+    inset: 24px;
+    border-style: solid;
+    border-color: rgba(100, 181, 246, 0.12);
+    animation: hudSpin 30s linear infinite reverse;
+}
+
+@keyframes hudSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.header .title,
+.header .subtitle,
+.header .status-indicator,
+.header .hud-readout {
+    position: relative;
+    z-index: 1;
 }
 
 .status-indicator {
@@ -74,6 +172,40 @@ body {
     50% {
         opacity: 0.6;
     }
+}
+
+/* Barra de telemetria do HUD — alimentada com dados REAIS retornados pela
+   API a cada resposta (emoção e nível de autonomia do jarvis_os.cognition,
+   e tokens de cache do uso da Anthropic). Nada aqui é decorativo/inventado. */
+.hud-readout {
+    margin-top: 18px;
+    display: flex;
+    justify-content: center;
+    gap: 22px;
+    flex-wrap: wrap;
+    font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.hud-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 70px;
+    padding: 4px 10px;
+    border-bottom: 2px solid rgba(100, 181, 246, 0.3);
+}
+
+.hud-stat-label {
+    font-size: 0.65em;
+    letter-spacing: 2px;
+    color: #6d84ad;
+}
+
+.hud-stat-value {
+    font-size: 0.95em;
+    color: #90caf9;
+    font-weight: 600;
+    text-shadow: 0 0 8px rgba(100, 181, 246, 0.5);
 }
 
 .chat-container {
@@ -274,6 +406,21 @@ body {
     .reset-button {
         padding: 10px 16px;
         font-size: 0.9em;
+    }
+
+    .hud-readout {
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .hud-corner {
+        width: 18px;
+        height: 18px;
+    }
+
+    .hud-reticle {
+        width: 120px;
+        height: 120px;
     }
 }
 

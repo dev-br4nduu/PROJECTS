@@ -5,7 +5,36 @@ class JarvisChat {
         this.sendBtn = document.getElementById('sendBtn');
         this.resetBtn = document.getElementById('resetBtn');
 
+        // Readouts do HUD: refletem dados REAIS vindos da API a cada resposta
+        // (emoção/autonomia do jarvis_os.cognition, tokens de cache do Claude).
+        this.hudAutonomy = document.getElementById('hudAutonomy');
+        this.hudEmotion = document.getElementById('hudEmotion');
+        this.hudCache = document.getElementById('hudCache');
+        this.hudStatus = document.getElementById('hudStatus');
+
         this.attachEventListeners();
+    }
+
+    /**
+     * Atualiza o painel de telemetria do HUD com valores reais retornados
+     * pela API (nunca números decorativos/inventados).
+     */
+    updateHud({ emotion, autonomy_level, usage } = {}) {
+        if (typeof autonomy_level === 'number' && this.hudAutonomy) {
+            this.hudAutonomy.textContent = `${Math.round(autonomy_level * 100)}%`;
+        }
+        if (emotion && this.hudEmotion) {
+            this.hudEmotion.textContent = emotion.toUpperCase();
+        }
+        if (usage && this.hudCache) {
+            if (usage.cache_read_input_tokens > 0) {
+                this.hudCache.textContent = `HIT ${usage.cache_read_input_tokens}`;
+            } else if (usage.cache_creation_input_tokens > 0) {
+                this.hudCache.textContent = `WARM ${usage.cache_creation_input_tokens}`;
+            } else {
+                this.hudCache.textContent = 'MISS';
+            }
+        }
     }
 
     attachEventListeners() {
@@ -88,6 +117,7 @@ class JarvisChat {
                         if (bubble) {
                             this.attachFeedbackBar(bubble, { prompt: message, response: accumulated });
                         }
+                        this.updateHud(data);
                     }
                 }
             }
@@ -116,6 +146,7 @@ class JarvisChat {
 
             if (response.ok) {
                 this.addJarvisMessage(data.jarvis, { prompt: message, response: data.jarvis });
+                this.updateHud(data);
             } else {
                 this.addJarvisMessage(`I apologize, sir. An error occurred: ${data.error}`);
             }
@@ -250,6 +281,9 @@ class JarvisChat {
                 this.chatMessages.innerHTML = '';
                 this.addJarvisMessage(data.greeting);
                 this.userInput.focus();
+                if (this.hudAutonomy) this.hudAutonomy.textContent = '--';
+                if (this.hudEmotion) this.hudEmotion.textContent = '--';
+                if (this.hudCache) this.hudCache.textContent = '--';
             } catch (error) {
                 alert(`Error resetting conversation: ${error.message}`);
             }

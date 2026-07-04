@@ -3,11 +3,27 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _clean_api_key(raw: str) -> str:
+    """
+    Sanitiza a chave lida do .env: remove espaços/quebras de linha nas pontas
+    e aspas acidentalmente coladas junto (ex: ANTHROPIC_API_KEY="sk-ant-...").
+    Sem isso, um copy-paste com espaço sobrando já faz a Anthropic rejeitar
+    a chave como "inválida ou não autorizada", mesmo com a chave certa.
+    """
+    if not raw:
+        return raw
+    cleaned = raw.strip()
+    if len(cleaned) >= 2 and cleaned[0] == cleaned[-1] and cleaned[0] in ("'", '"'):
+        cleaned = cleaned[1:-1].strip()
+    return cleaned
+
+
 class Config:
     """Configuração do Jarvis"""
 
     # API Configuration
-    ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+    ANTHROPIC_API_KEY = _clean_api_key(os.getenv("ANTHROPIC_API_KEY", ""))
     # Modelo configurável via env; default estável e amplamente disponível.
     MODEL = os.getenv("JARVIS_MODEL", "claude-3-5-sonnet-20241022")
 
