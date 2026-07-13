@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS · Assistente Pessoal</title>
+<style>
+  :root{
+    --theme:#00d9ff;
+    --theme-soft:rgba(0,217,255,.35);
+    --theme-glow:rgba(0,217,255,.55);
+    --violet:#8b5cf6;
+    --bg:#04070d;
+    --panel:#0a111d;
+    --line:#122033;
+    --txt:#d7e6f2;
+    --dim:#6b7f93;
+    --ok:#22c55e;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;
+    overflow-x:hidden;
+  }
+  .hidden{display:none !important;}
+
+  /* ══════════ TELAS DE BOOT / ATIVAÇÃO ══════════ */
+  .screen{
+    position:fixed;inset:0;z-index:50;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;
+    background:radial-gradient(ellipse at 50% 30%,#0a1622 0%,var(--bg) 70%);
+    transition:opacity .6s ease;
+  }
+  .screen.fade{opacity:0;}
+  .bigname{
+    font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    font-size:clamp(44px,11vw,100px);
+    font-weight:700;
+    letter-spacing:.32em;
+    padding-left:.32em;
+    background:linear-gradient(90deg,var(--theme) 10%,var(--violet) 90%);
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;
+    text-shadow:0 0 60px var(--theme-soft);
+  }
+  hr.grad{
+    width:min(520px,70vw);border:none;height:2px;
+    background:linear-gradient(90deg,transparent,var(--theme),var(--violet),transparent);
+  }
+  .sync{
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    letter-spacing:.35em;font-size:14px;color:var(--theme);
+    animation:blink 1.1s steps(2,start) infinite;
+  }
+  @keyframes blink{50%{opacity:.15;}}
+  .ver{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--dim);letter-spacing:.25em;}
+  #activateBtn{
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:18px;letter-spacing:.2em;
+    padding:16px 42px;cursor:pointer;
+    color:var(--theme);background:rgba(0,217,255,.06);
+    border:1px solid var(--theme);border-radius:8px;
+    box-shadow:0 0 24px var(--theme-soft),inset 0 0 18px rgba(0,217,255,.08);
+    transition:all .25s;
+  }
+  #activateBtn:hover{background:rgba(0,217,255,.16);box-shadow:0 0 44px var(--theme-glow);transform:scale(1.04);}
+  .hint{font-size:12px;color:var(--dim);letter-spacing:.4em;}
+
+  /* ══════════ APP ══════════ */
+  header{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:12px 18px;border-bottom:1px solid var(--line);
+    background:rgba(8,14,24,.85);position:sticky;top:0;z-index:10;backdrop-filter:blur(6px);
+  }
+  .brand{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;letter-spacing:.2em;color:var(--theme);}
+  .brand span{color:var(--dim);font-size:11px;letter-spacing:.1em;}
+  #apiKey{
+    flex:1;min-width:220px;
+    background:#060b13;border:1px solid var(--line);border-radius:6px;
+    color:var(--txt);padding:9px 12px;font-size:13px;outline:none;
+  }
+  #apiKey:focus{border-color:var(--theme);}
+  main{max-width:1060px;margin:0 auto;padding:26px 16px 60px;display:flex;flex-direction:column;align-items:center;gap:14px;}
+
+  /* Orbe / reator */
+  #orbWrap{position:relative;width:200px;height:200px;display:flex;align-items:center;justify-content:center;margin-top:6px;}
+  #orb{
+    width:170px;height:170px;border-radius:50%;cursor:pointer;position:relative;
+    background:radial-gradient(circle at 35% 32%,rgba(255,255,255,.95) 0%,var(--theme) 26%,#075a75 58%,#031622 88%);
+    box-shadow:0 0 55px var(--theme-glow),0 0 130px var(--theme-soft),inset 0 0 46px rgba(0,217,255,.55);
+    animation:idlePulse 3.6s ease-in-out infinite;
+  }
+  #orb::before,#orb::after{
+    content:"";position:absolute;inset:-14px;border-radius:50%;
+    border:2px solid var(--theme);opacity:0;pointer-events:none;
+  }
+  @keyframes idlePulse{0%,100%{transform:scale(1);filter:brightness(.92);}50%{transform:scale(1.035);filter:brightness(1.08);}}
+  #orb.listening{animation:idlePulse 1.5s ease-in-out infinite;}
+  #orb.listening::before{animation:wave 1.7s ease-out infinite;}
+  #orb.listening::after{animation:wave 1.7s ease-out .85s infinite;}
+  #orb.thinking{animation:thinkPulse .65s ease-in-out infinite;}
+  #orb.speaking{animation:idlePulse 2.2s ease-in-out infinite;}
+  #orb.speaking::before{animation:wave 2.4s ease-out infinite;}
+  @keyframes wave{0%{transform:scale(1);opacity:.75;}100%{transform:scale(1.55);opacity:0;}}
+  @keyframes thinkPulse{0%,100%{transform:scale(.97);filter:brightness(.85);}50%{transform:scale(1.06);filter:brightness(1.35);}}
+
+  #asstName{
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:26px;font-weight:700;letter-spacing:.4em;padding-left:.4em;
+    background:linear-gradient(90deg,var(--theme),var(--violet));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+  }
+  #userLine,#botLine{max-width:760px;text-align:center;line-height:1.5;font-size:15px;}
+  #userLine{color:var(--dim);}
+  #botLine{color:var(--txt);min-height:24px;}
+  #status{
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;letter-spacing:.25em;
+    color:var(--theme);border:1px solid var(--line);border-radius:20px;padding:6px 18px;background:rgba(0,217,255,.04);
+  }
+  #controls{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+  #controls button{
+    background:var(--panel);border:1px solid var(--line);border-radius:8px;color:var(--txt);
+    padding:10px 20px;font-size:14px;cursor:pointer;transition:all .2s;
+  }
+  #controls button:hover{border-color:var(--theme);color:var(--theme);}
+  #typeWrap{width:100%;max-width:560px;}
+  #typeIn{
+    width:100%;background:#060b13;border:1px solid var(--line);border-radius:8px;
+    color:var(--txt);padding:12px 16px;font-size:14px;outline:none;
+  }
+  #typeIn:focus{border-color:var(--theme);box-shadow:0 0 14px var(--theme-soft);}
+
+  /* ══════════ SECOND BRAIN ══════════ */
+  #brain{width:100%;margin-top:26px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#080f1a,#060a12);overflow:hidden;}
+  #brainBar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line);}
+  .bTitle{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;letter-spacing:.18em;color:#c4b5fd;}
+  .bSub{color:var(--dim);font-size:12px;margin-left:10px;}
+  .bRight{display:flex;align-items:center;gap:10px;}
+  #counter{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--dim);letter-spacing:.08em;}
+  .bRight button{
+    width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;
+    background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.45);color:#c4b5fd;
+  }
+  .bRight button:hover{background:rgba(139,92,246,.3);}
+  #graphWrap{width:100%;}
+  #graphWrap svg{display:block;width:100%;height:auto;}
+  #legendRow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 16px 14px;border-top:1px solid var(--line);}
+  #legend{display:flex;gap:14px;flex-wrap:wrap;}
+  .lg{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--dim);}
+  .lg i{width:10px;height:10px;border-radius:50%;display:inline-block;}
+  #ctxOk{font-size:12px;color:var(--ok);}
+
+  /* animações do grafo (SVG estilizado pelo CSS do documento) */
+  .edge{fill:none;stroke:url(#edgeGrad);stroke-width:1.3;opacity:.5;stroke-dasharray:6 10;animation:dashmove 2.8s linear infinite;}
+  @keyframes dashmove{to{stroke-dashoffset:-64;}}
+  .ray{stroke-width:.7;opacity:.18;}
+  .ring{fill:none;animation:breathe 3.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center;}
+  @keyframes breathe{0%,100%{opacity:.2;transform:scale(1);}50%{opacity:.75;transform:scale(1.14);}}
+  .coreC{animation:corePulse 2.8s ease-in-out infinite;transform-box:fill-box;transform-origin:center;}
+  @keyframes corePulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+  .node{cursor:pointer;}
+  .node text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:12px;fill:#aebdd0;pointer-events:none;}
+  .node:hover text{fill:#fff;}
+  .node.flash{animation:flashA .3s ease-in-out 6;}
+  @keyframes flashA{50%{opacity:.12;}}
+  .pulse{fill:#fff;pointer-events:none;}
+
+  /* ══════════ MODAL EDITOR ══════════ */
+  #modal{position:fixed;inset:0;z-index:60;background:rgba(2,5,10,.75);display:flex;align-items:center;justify-content:center;padding:16px;}
+  #modalCard{
+    width:100%;max-width:420px;background:#0a1220;border:1px solid var(--violet);border-radius:14px;
+    padding:22px;display:flex;flex-direction:column;gap:8px;box-shadow:0 0 60px rgba(139,92,246,.35);
+  }
+  #modalCard h3{color:#c4b5fd;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.12em;margin-bottom:6px;}
+  #modalCard label{font-size:12px;color:var(--dim);letter-spacing:.1em;}
+  #modalCard input,#modalCard select,#modalCard textarea{
+    background:#060b13;border:1px solid var(--line);border-radius:6px;color:var(--txt);
+    padding:9px 11px;font-size:14px;outline:none;resize:vertical;font-family:inherit;
+  }
+  #modalCard input:focus,#modalCard select:focus,#modalCard textarea:focus{border-color:var(--violet);}
+  .mBtns{display:flex;gap:10px;margin-top:12px;}
+  .mBtns button{flex:1;padding:10px;border-radius:8px;border:1px solid var(--line);cursor:pointer;font-size:14px;background:var(--panel);color:var(--txt);}
+  #mSave{border-color:var(--ok);color:var(--ok);}
+  #mDelete{border-color:#ef4444;color:#ef4444;}
+  .mBtns button:hover{filter:brightness(1.4);}
+
+  @media (max-width:640px){
+    #orbWrap{width:160px;height:160px;}
+    #orb{width:135px;height:135px;}
+    #asstName{font-size:20px;}
+    header{padding:10px 12px;}
+    .bSub{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<!-- TELA 1 · BOOT -->
+<div id="boot" class="screen">
+  <div class="bigname">JARVIS</div>
+  <hr class="grad">
+  <div class="sync">SINCRONIZANDO DADOS...</div>
+  <div class="ver">v5.0 · REBUILD</div>
+</div>
+
+<!-- TELA 2 · ATIVAÇÃO -->
+<div id="gate" class="screen hidden">
+  <div class="bigname">JARVIS</div>
+  <hr class="grad">
+  <button id="activateBtn">► ATIVAR SISTEMA</button>
+  <div class="hint">CLIQUE PARA INICIAR</div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <header>
+    <div class="brand">⚡ JARVIS <span>v5.0 · REBUILD</span></div>
+    <input id="apiKey" type="password" placeholder="Cole sua API key da Anthropic (console.anthropic.com)">
+  </header>
+  <main>
+    <div id="orbWrap"><div id="orb" title="Clique para falar comigo"></div></div>
+    <div id="asstName">JARVIS</div>
+    <div id="userLine">Você: —</div>
+    <div id="botLine"></div>
+    <div id="status">INICIANDO...</div>
+    <div id="controls">
+      <button id="micBtn">🎤 Falar</button>
+      <button id="stopBtn">⏹ Interromper fala</button>
+    </div>
+    <div id="typeWrap"><input id="typeIn" placeholder="ou digite e tecle Enter"></div>
+
+    <!-- SECOND BRAIN -->
+    <section id="brain">
+      <div id="brainBar">
+        <div><span class="bTitle">🧠 SECOND BRAIN</span><span class="bSub">memória neural viva do senhor</span></div>
+        <div class="bRight">
+          <span id="counter"></span>
+          <button id="addBtn" title="Nova nota">+</button>
+          <button id="reloadBtn" title="Recarregar grafo">⟳</button>
+        </div>
+      </div>
+      <div id="graphWrap"></div>
+      <div id="legendRow">
+        <div id="legend"></div>
+        <div id="ctxOk"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- MODAL DE NOTA -->
+<div id="modal" class="hidden">
+  <div id="modalCard">
+    <h3 id="modalTitle">EDITAR NOTA</h3>
+    <label>Título</label><input id="fTitle">
+    <label>Área</label><select id="fArea"></select>
+    <label>Conteúdo</label><textarea id="fBody" rows="5"></textarea>
+    <div class="mBtns">
+      <button id="mSave">Salvar</button>
+      <button id="mDelete">Excluir</button>
+      <button id="mCancel">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ══════════════════ CONFIG ══════════════════ */
+const CONFIG = {
+  name: "Jarvis",
+  address: "senhor",
+  themeColor: "#00d9ff",
+  persona: "mordomo britânico refinado e sarcástico",
+  wakeWord: "ei jarvis",
+  voiceGender: "male",
+  model: "claude-sonnet-5"
+};
+
+const AREA = {
+  metas:       { label: "Metas",       color: "#fbbf24" },
+  trabalho:    { label: "Carreira",    color: "#ff5547" },
+  projetos:    { label: "Projetos",    color: "#8b7cff" },
+  financas:    { label: "Finanças",    color: "#f7931a" },
+  aprendizado: { label: "Aprendizado", color: "#2dd4ff" },
+  saude:       { label: "Saúde",       color: "#10b981" },
+  relacoes:    { label: "Relações",    color: "#ec4899" },
+  meta:        { label: "Você",        color: "#8a90a6" }
+};
+
+const SEED_NOTES = [
+  { id:"perfil", area:"meta", title:"Perfil", body:"Danilo Prando, 37 anos, mora em Guarulhos, São Paulo. Otimista, com visão positiva do futuro. Gosta de tecnologia, IA, automação, finanças, desenvolvimento de sistemas, carros, filmes, desenho e de passar tempo com a família." },
+  { id:"fe", area:"meta", title:"Fé", body:"Testemunha de Jeová. Os valores pessoais são prioridade e guiam o equilíbrio entre vida profissional e familiar." },
+  { id:"curto_prazo", area:"metas", title:"Curto Prazo", body:"3 a 6 meses: consolidar conhecimentos em IA (ChatGPT, Claude) aplicada ao ambiente corporativo; automatizar processos financeiros com IA, Power Automate, APIs e Protheus; evoluir o MONETA para produção; especializar-se em Power BI; fortalecer presença no LinkedIn." },
+  { id:"longo_prazo", area:"metas", title:"Longo Prazo", body:"1 a 3 anos: tornar-se referência em IA aplicada à área financeira e automação; expandir o ecossistema MONETA como solução robusta de gestão financeira; assumir liderança em projetos de inovação; construir portfólio sólido de soluções com IA, automação e dados; manter equilíbrio entre carreira, família e valores." },
+  { id:"flexform", area:"trabalho", title:"Flexform", body:"Analista Financeiro Pleno na Flexform, área Financeira. Rotina voltada a gestão financeira, análise de processos e automação, com o ERP TOTVS Protheus como plataforma principal." },
+  { id:"foco_atual", area:"trabalho", title:"Foco Atual", body:"Transformação digital dos processos financeiros: automações, integrações via APIs, dashboards em Power BI e IA para eficiência operacional, redução de trabalho manual e melhor tomada de decisão." },
+  { id:"moneta", area:"projetos", title:"MONETA", body:"Plataforma própria de gestão financeira patrimonial (Family Office). Tecnologias: FastAPI, PostgreSQL, Next.js, Docker, Kubernetes e IA. Funcionalidades: fluxo de caixa, centros de custo, departamentos, contas bancárias, relatórios e dashboards." },
+  { id:"autom_fin", area:"projetos", title:"Automação Fin.", body:"Automatização de rotinas financeiras na Flexform com Power Automate, APIs e integrações, reduzindo atividades manuais e aumentando a eficiência operacional." },
+  { id:"protheus", area:"projetos", title:"Protheus", body:"Integrações entre o TOTVS Protheus e sistemas corporativos: Flexsys, Landz, APIs bancárias e CRM. Otimização dos processos financeiros e de crédito." },
+  { id:"ia_fin", area:"projetos", title:"IA Financeira", body:"IA aplicada ao financeiro: automação de tarefas, geração de análises e apoio à tomada de decisão, explorando ChatGPT, Claude e outras soluções." },
+  { id:"dashboards", area:"projetos", title:"Dashboards BI", body:"Dashboards em Power BI para indicadores financeiros: fluxo de caixa, contas a receber, inadimplência, cobranças e KPIs." },
+  { id:"padronizacao", area:"projetos", title:"Padronização", body:"Documentação de procedimentos, fluxogramas, manuais operacionais e modelos de trabalho para a equipe financeira." },
+  { id:"whatsapp", area:"projetos", title:"WhatsApp Bot", body:"Automação do atendimento via WhatsApp: modelagem de fluxos, validação de telefone via API, envio automático de mensagens e filas de atendimento." },
+  { id:"cert_ia", area:"projetos", title:"Certificações", body:"Conclusão de cursos e certificações em IA (como Claude), com aplicação prática dos conhecimentos em projetos reais." },
+  { id:"marca", area:"projetos", title:"Marca Pessoal", body:"Perfil do LinkedIn atualizado, com publicações sobre IA, automação, tecnologia e carreira para consolidar autoridade profissional." },
+  { id:"objetivos_fin", area:"financas", title:"Objetivos", body:"Vida financeira sólida com planejamento de longo prazo; aumentar renda via crescimento profissional e projetos próprios; transformar o MONETA em ativo gerador de valor; criar múltiplas fontes de renda; construir patrimônio com segurança para a família; gestão organizada, sem endividamento desnecessário." },
+  { id:"estudando", area:"aprendizado", title:"Estudando", body:"IA Generativa (ChatGPT, Claude), Engenharia de Prompt, Power Automate e integrações, TOTVS Protheus (módulos financeiros), Power BI e DAX, FastAPI, Python, PostgreSQL, Next.js, arquitetura web e documentação técnica." },
+  { id:"aprender", area:"aprendizado", title:"Quer Aprender", body:"Arquitetura avançada de sistemas com IA; agentes de IA e LLMs corporativos; SaaS escalável e nuvem; engenharia de dados; liderança em inovação; transformar software em produto; segurança e governança de IA." },
+  { id:"saude", area:"saude", title:"Saúde", body:"Rotina estável, nada fora do normal em treino, sono ou alimentação." },
+  { id:"bianca", area:"relacoes", title:"Bianca", body:"Esposa e companheira do Danilo." },
+  { id:"familia", area:"relacoes", title:"Família", body:"Prioridade máxima; busca constante de equilíbrio entre crescimento profissional e vida familiar." },
+  { id:"pais", area:"relacoes", title:"Pais", body:"Tiveram uma oficina mecânica atingida por um incêndio, acontecimento marcante para a família." }
+];
+
+const REL = [
+  ["curto_prazo","moneta"],["curto_prazo","autom_fin"],["curto_prazo","ia_fin"],
+  ["curto_prazo","dashboards"],["curto_prazo","estudando"],["curto_prazo","marca"],
+  ["curto_prazo","flexform"],["curto_prazo","longo_prazo"],
+  ["longo_prazo","moneta"],["longo_prazo","objetivos_fin"],["longo_prazo","aprender"],
+  ["longo_prazo","familia"],["longo_prazo","fe"],
+  ["perfil","fe"],["perfil","familia"],["perfil","flexform"],
+  ["flexform","foco_atual"],["foco_atual","autom_fin"],["foco_atual","dashboards"],
+  ["foco_atual","protheus"],["foco_atual","padronizacao"],
+  ["moneta","objetivos_fin"],["moneta","ia_fin"],
+  ["autom_fin","protheus"],["autom_fin","whatsapp"],["protheus","whatsapp"],
+  ["protheus","dashboards"],
+  ["ia_fin","cert_ia"],["cert_ia","estudando"],["cert_ia","marca"],
+  ["estudando","aprender"],
+  ["bianca","familia"],["familia","pais"],["familia","fe"],
+  ["objetivos_fin","familia"]
+];
+
+/* ══════════════════ ESTADO ══════════════════ */
+let notes = loadNotes();
+let history = [];
+let busy = false;
+let speaking = false;
+let awake = false;
+let appOn = false;
+let recognition = null;
+let voices = [];
+let editingId = null;
+let edgePaths = [];
+let pulses = [];
+let pulseEls = [];
+
+const $ = id => document.getElementById(id);
+const boot = $("boot"), gate = $("gate"), app = $("app");
+const orb = $("orb"), userLine = $("userLine"), botLine = $("botLine"), statusEl = $("status");
+const keyInput = $("apiKey"), typeIn = $("typeIn");
+const graphWrap = $("graphWrap"), counter = $("counter"), legend = $("legend"), ctxOk = $("ctxOk");
+const modal = $("modal"), fTitle = $("fTitle"), fArea = $("fArea"), fBody = $("fBody");
+
+/* ══════════════════ UTIL ══════════════════ */
+function normalize(s){ return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,""); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function setOrb(state){ orb.className = state; }
+function setStatus(t){ statusEl.textContent = t; }
+function defaultStatus(){ return awake ? "OUVINDO COMANDO..." : 'OCIOSO · DIGA "' + CONFIG.wakeWord.toUpperCase() + '"'; }
+
+function loadNotes(){
+  try{
+    const raw = localStorage.getItem("jarvis_notes");
+    if(raw){
+      const arr = JSON.parse(raw);
+      if(Array.isArray(arr) && arr.length) return arr;
+    }
+  }catch(e){}
+  const copy = JSON.parse(JSON.stringify(SEED_NOTES));
+  try{ localStorage.setItem("jarvis_notes", JSON.stringify(copy)); }catch(e){}
+  return copy;
+}
+function saveNotes(){ try{ localStorage.setItem("jarvis_notes", JSON.stringify(notes)); }catch(e){} }
+
+/* ══════════════════ BOOT → ATIVAÇÃO ══════════════════ */
+setTimeout(function(){
+  boot.classList.add("fade");
+  setTimeout(function(){
+    boot.classList.add("hidden");
+    gate.classList.remove("hidden");
+  }, 620);
+}, 2200);
+
+$("activateBtn").addEventListener("click", function(){
+  gate.classList.add("hidden");
+  app.classList.remove("hidden");
+  appOn = true;
+  initRecognition();
+  safeStart();
+  setOrb("idle");
+  setStatus(defaultStatus());
+  speak("Sistemas online. Estou ouvindo, " + CONFIG.address + ".");
+});
+
+/* ══════════════════ VOZ · TTS ══════════════════ */
+function loadVoices(){ if("speechSynthesis" in window) voices = speechSynthesis.getVoices(); }
+if("speechSynthesis" in window){
+  speechSynthesis.onvoiceschanged = loadVoices;
+  loadVoices();
+}
+function pickVoice(){
+  const pt = voices.filter(v => /^pt([-_]|$)/i.test(v.lang));
+  if(!pt.length) return null;
+  const fem = /fem|female|maria|luciana|francisca|vit[oó]ria|camila|let[ií]cia|helo[ií]sa/i;
+  const masc = pt.filter(v => /daniel|felipe|ricardo|ant[oô]nio|thiago|male|masc/i.test(v.name) && !fem.test(v.name));
+  if(masc.length) return masc[0];
+  const notFem = pt.filter(v => !fem.test(v.name));
+  return notFem[0] || pt[0];
+}
+function speak(text, keepAwake){
+  botLine.textContent = CONFIG.name + ": " + text;
+  if(!("speechSynthesis" in window)){
+    busy = false; setOrb("idle"); setStatus(defaultStatus()); safeStart();
+    return;
+  }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "pt-BR";
+  const v = pickVoice();
+  if(v) u.voice = v;
+  u.rate = 1.02;
+  u.pitch = 0.9;
+  speaking = true;
+  setOrb("speaking");
+  setStatus("FALANDO...");
+  const done = function(){
+    speaking = false;
+    busy = false;
+    if(!keepAwake) { /* awake já foi resolvido em ask() */ }
+    setOrb(awake ? "listening" : "idle");
+    setStatus(defaultStatus());
+    safeStart();
+  };
+  u.onend = done;
+  u.onerror = done;
+  speechSynthesis.speak(u);
+}
+$("stopBtn").addEventListener("click", function(){
+  if("speechSynthesis" in window) speechSynthesis.cancel();
+  speaking = false;
+  busy = false;
+  setOrb("idle");
+  setStatus(defaultStatus());
+  safeStart();
+});
+
+/* ══════════════════ VOZ · STT ══════════════════ */
+function initRecognition(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){
+    setStatus("VOZ INDISPONÍVEL · USE O TEXTO");
+    userLine.textContent = "Este navegador não suporta reconhecimento de voz. Use o campo de texto abaixo (Chrome recomendado).";
+    return;
+  }
+  recognition = new SR();
+  recognition.lang = "pt-BR";
+  recognition.continuous = true;
+  recognition.interimResults = false;
+  recognition.onresult = function(e){
+    if(busy || speaking) return; /* nunca ouvir a si mesmo */
+    const t = e.results[e.results.length - 1][0].transcript.trim();
+    if(t) handleSpeech(t);
+  };
+  recognition.onend = function(){
+    if(!busy && appOn) safeStart();
+  };
+  recognition.onerror = function(e){
+    if(e.error === "not-allowed" || e.error === "service-not-allowed"){
+      recognition = null;
+      setStatus("MICROFONE NEGADO · USE O TEXTO");
+      userLine.textContent = "Permissão de microfone negada. Libere o microfone nas configurações do site ou use o campo de texto.";
+    }
+  };
+}
+function safeStart(){
+  if(!recognition || !appOn || busy) return;
+  try{ recognition.start(); }catch(err){ /* já iniciado — ignorar */ }
+}
+function handleSpeech(raw){
+  const norm = normalize(raw);
+  const w = normalize(CONFIG.wakeWord);
+  if(!awake){
+    const idx = norm.indexOf(w);
+    if(idx === -1) return;
+    const cmd = norm.slice(idx + w.length).replace(/^[\s,.!?]+/, "").trim();
+    if(cmd.length >= 3){
+      ask(cmd);
+    }else{
+      awake = true;
+      setOrb("listening");
+      setStatus("OUVINDO COMANDO...");
+      speak("Pois não, " + CONFIG.address + "?", true);
+    }
+  }else{
+    ask(raw.trim());
+  }
+}
+$("micBtn").addEventListener("click", function(){
+  if(speaking && "speechSynthesis" in window) speechSynthesis.cancel();
+  awake = true;
+  setOrb("listening");
+  setStatus("OUVINDO COMANDO...");
+  safeStart();
+});
+orb.addEventListener("click", function(){
+  awake = true;
+  setOrb("listening");
+  setStatus("OUVINDO COMANDO...");
+  safeStart();
+});
+typeIn.addEventListener("keydown", function(e){
+  if(e.key === "Enter" && typeIn.value.trim() && !busy){
+    const t = typeIn.value.trim();
+    typeIn.value = "";
+    ask(t);
+  }
+});
+
+/* ══════════════════ CÉREBRO · API CLAUDE ══════════════════ */
+keyInput.value = localStorage.getItem("anthropic_key") || "";
+keyInput.addEventListener("input", function(){
+  localStorage.setItem("anthropic_key", keyInput.value.trim());
+});
+
+function buildSystem(){
+  let s = "Você é " + CONFIG.name + ", o assistente pessoal de voz do usuário. ";
+  s += "Personalidade: " + CONFIG.persona + " — um mordomo britânico impecavelmente educado, com humor seco, ironias elegantes e sarcasmo refinado, porém sempre leal e respeitoso. ";
+  s += "Trate o usuário SEMPRE como \"" + CONFIG.address + "\".\n\n";
+  s += "REGRAS DE RESPOSTA: responda sempre em português do Brasil, em 2 a 4 frases curtas e naturais, pois sua resposta será FALADA em voz alta. NUNCA use emojis, markdown, listas, títulos ou símbolos — apenas texto corrido.\n\n";
+  s += "SECOND BRAIN — tudo o que você sabe sobre o " + CONFIG.address + ". Use SEMPRE este contexto para personalizar cada resposta:\n";
+  const byArea = {};
+  notes.forEach(function(n){
+    if(!byArea[n.area]) byArea[n.area] = [];
+    byArea[n.area].push(n);
+  });
+  Object.keys(AREA).forEach(function(k){
+    if(!byArea[k]) return;
+    s += "\n[" + AREA[k].label.toUpperCase() + "]\n";
+    byArea[k].forEach(function(n){ s += "- " + n.title + ": " + n.body + "\n"; });
+  });
+  s += "\nPROTOCOLO DE MEMÓRIA VIVA: se o usuário revelar algo NOVO e DURADOURO sobre a vida dele (fato, meta, projeto, relação, preferência, mudança), TERMINE sua resposta com uma linha no formato EXATO [[SAVE:area|titulo|texto]], onde area é uma destas: metas, trabalho, projetos, financas, aprendizado, saude, relacoes, meta. Se já existir uma nota com esse título, ela será atualizada; senão, uma nova será criada. Inclua essa linha APENAS quando houver algo realmente novo e relevante, e NUNCA mencione esse mecanismo em voz alta.";
+  return s;
+}
+
+async function ask(text){
+  busy = true;
+  awake = false;
+  userLine.textContent = "Você: " + text;
+  setOrb("thinking");
+  setStatus("PENSANDO...");
+  const key = (keyInput.value || "").trim();
+  if(!key){
+    speak("Preciso da sua chave da API, " + CONFIG.address + ". Faça a gentileza de colá-la no campo no topo da tela.");
+    return;
+  }
+  history.push({ role: "user", content: text });
+  if(history.length > 24) history = history.slice(-24);
+  try{
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": key,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        model: CONFIG.model,
+        max_tokens: 400,
+        system: buildSystem(),
+        messages: history
+      })
+    });
+    if(!res.ok){
+      history.pop();
+      speak("Houve um erro na chamada à API, " + CONFIG.address + ". Sugiro verificar se a chave está correta e com créditos.");
+      return;
+    }
+    const data = await res.json();
+    let out = (data && data.content && data.content[0] && data.content[0].text) ? data.content[0].text.trim() : "";
+    if(!out){
+      history.pop();
+      speak("Recebi uma resposta vazia, " + CONFIG.address + ". Tente novamente, por favor.");
+      return;
+    }
+    out = processMemory(out);
+    history.push({ role: "assistant", content: out });
+    speak(out);
+  }catch(err){
+    history.pop();
+    speak("Não consegui conectar à API, " + CONFIG.address + ". Verifique sua conexão com a internet.");
+  }
+}
+
+/* ══════════════════ MEMÓRIA VIVA ══════════════════ */
+function processMemory(text){
+  const re = /\[\[SAVE:([a-z_]+)\|([^|]+)\|([\s\S]+?)\]\]/g;
+  const changed = [];
+  let m;
+  while((m = re.exec(text)) !== null){
+    const area = AREA[m[1]] ? m[1] : "meta";
+    const title = m[2].trim();
+    const body = m[3].trim();
+    if(!title || !body) continue;
+    const ex = notes.find(function(n){ return n.title.toLowerCase() === title.toLowerCase(); });
+    if(ex){
+      ex.area = area;
+      ex.body = body;
+      changed.push(ex.id);
+    }else{
+      const id = "n" + Date.now() + Math.floor(Math.random() * 1000);
+      notes.push({ id: id, area: area, title: title, body: body });
+      changed.push(id);
+    }
+  }
+  const clean = text.replace(re, "").replace(/\n{2,}/g, "\n").trim();
+  if(changed.length){
+    saveNotes();
+    renderGraph();
+    changed.forEach(flashNode);
+  }
+  return clean;
+}
+function flashNode(id){
+  const g = document.getElementById("node-" + id);
+  if(!g) return;
+  g.classList.add("flash");
+  setTimeout(function(){ g.classList.remove("flash"); }, 2000);
+}
+
+/* ══════════════════ SECOND BRAIN · GRAFO ══════════════════ */
+function renderGraph(){
+  const W = 1000, H = 540, cx = 500, cy = 252, rx = 428, ry = 186;
+  const n = notes.length;
+  const pos = {};
+  notes.forEach(function(nt, i){
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / Math.max(n, 1);
+    pos[nt.id] = { x: +(cx + rx * Math.cos(a)).toFixed(1), y: +(cy + ry * Math.sin(a)).toFixed(1) };
+  });
+  const deg = {};
+  notes.forEach(function(nt){ deg[nt.id] = 0; });
+  const edges = [];
+  REL.forEach(function(p){
+    if(pos[p[0]] && pos[p[1]]){
+      edges.push(p);
+      deg[p[0]]++;
+      deg[p[1]]++;
+    }
+  });
+
+  let s = "";
+  s += '<defs>';
+  s += '<linearGradient id="edgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">';
+  s += '<stop offset="0%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#22d3ee"/>';
+  s += '</linearGradient>';
+  s += '<radialGradient id="coreGrad" cx="38%" cy="35%" r="75%">';
+  s += '<stop offset="0%" stop-color="#c4b5fd"/><stop offset="45%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#3b1d78"/>';
+  s += '</radialGradient>';
+  s += '<filter id="glow" x="-80%" y="-80%" width="260%" height="260%">';
+  s += '<feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>';
+  s += '</filter>';
+  s += '</defs>';
+
+  edgePaths = [];
+  /* raios finos do núcleo até cada nó, na cor da área */
+  notes.forEach(function(nt){
+    const p = pos[nt.id];
+    s += '<line class="ray" x1="' + cx + '" y1="' + cy + '" x2="' + p.x + '" y2="' + p.y + '" stroke="' + AREA[nt.area].color + '"/>';
+  });
+  /* arestas (Bézier quadrática, controle puxado ~35% ao centro) */
+  edges.forEach(function(p){
+    const A = pos[p[0]], B = pos[p[1]];
+    const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+    const qx = +(mx + (cx - mx) * 0.35).toFixed(1);
+    const qy = +(my + (cy - my) * 0.35).toFixed(1);
+    edgePaths.push({ ax: A.x, ay: A.y, qx: qx, qy: qy, bx: B.x, by: B.y });
+    s += '<path class="edge" d="M ' + A.x + ' ' + A.y + ' Q ' + qx + ' ' + qy + ' ' + B.x + ' ' + B.y + '"/>';
+  });
+  /* núcleo */
+  s += '<g class="coreC">';
+  s += '<circle cx="' + cx + '" cy="' + cy + '" r="46" fill="url(#coreGrad)" filter="url(#glow)"/>';
+  s += '<circle cx="' + cx + '" cy="' + cy + '" r="56" fill="none" stroke="#8b5cf6" stroke-width="1.5" opacity=".45" class="ring"/>';
+  s += '<text x="' + cx + '" y="' + (cy + 12) + '" text-anchor="middle" font-size="34">🧠</text>';
+  s += '</g>';
+  /* nós */
+  notes.forEach(function(nt, i){
+    const p = pos[nt.id];
+    const c = AREA[nt.area].color;
+    const r = 12 + Math.min(deg[nt.id] || 0, 6) * 1.9;
+    s += '<g class="node" id="node-' + nt.id + '" data-id="' + esc(nt.id) + '">';
+    s += '<circle class="ring" cx="' + p.x + '" cy="' + p.y + '" r="' + (r + 7) + '" stroke="' + c + '" stroke-width="1.4" style="animation-delay:-' + ((i % 8) * 0.4).toFixed(1) + 's"/>';
+    s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + r + '" fill="' + c + '" fill-opacity=".22" stroke="' + c + '" stroke-width="2" filter="url(#glow)"/>';
+    s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (r * 0.38).toFixed(1) + '" fill="' + c + '"/>';
+    s += '<text x="' + p.x + '" y="' + (p.y + r + 18) + '" text-anchor="middle">' + esc(nt.title) + '</text>';
+    s += '</g>';
+  });
+  /* camada de pulsos de sinapse */
+  s += '<g id="pulseLayer">';
+  for(let i = 0; i < 12; i++){
+    s += '<circle class="pulse" r="2.6" cx="-20" cy="-20" opacity="0" filter="url(#glow)"/>';
+  }
+  s += '</g>';
+
+  /* CRÍTICO: injetar a string do SVG via innerHTML de uma DIV
+     (nunca innerHTML direto no <svg> — quebra o namespace no Safari/webviews) */
+  graphWrap.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + s + '</svg>';
+
+  graphWrap.querySelectorAll(".node").forEach(function(g){
+    g.addEventListener("click", function(){ openEditor(g.getAttribute("data-id")); });
+  });
+
+  const areasPresent = {};
+  notes.forEach(function(nt){ areasPresent[nt.area] = 1; });
+  counter.textContent = notes.length + " notas · " + Object.keys(areasPresent).length + " áreas";
+  let lg = "";
+  Object.keys(AREA).forEach(function(k){
+    if(areasPresent[k]) lg += '<span class="lg"><i style="background:' + AREA[k].color + '"></i>' + AREA[k].label + '</span>';
+  });
+  legend.innerHTML = lg;
+  ctxOk.textContent = "✓ contexto injetado em todos os comandos do " + CONFIG.name;
+
+  initPulses();
+}
+
+/* pulsos de sinapse viajando pelas arestas */
+function initPulses(){
+  pulseEls = Array.prototype.slice.call(graphWrap.querySelectorAll(".pulse"));
+  pulses = pulseEls.map(function(){
+    return {
+      e: Math.floor(Math.random() * Math.max(edgePaths.length, 1)),
+      t: Math.random(),
+      s: 0.0045 + Math.random() * 0.008
+    };
+  });
+}
+function tick(){
+  if(edgePaths.length && pulseEls.length){
+    for(let i = 0; i < pulses.length; i++){
+      const p = pulses[i];
+      p.t += p.s;
+      if(p.t >= 1){
+        p.t = 0;
+        p.e = Math.floor(Math.random() * edgePaths.length);
+      }
+      const E = edgePaths[p.e];
+      if(!E) continue;
+      const t = p.t, mt = 1 - t;
+      /* posição na curva = (1-t)²·A + 2(1-t)t·C + t²·B */
+      const x = mt * mt * E.ax + 2 * mt * t * E.qx + t * t * E.bx;
+      const y = mt * mt * E.ay + 2 * mt * t * E.qy + t * t * E.by;
+      const el = pulseEls[i];
+      el.setAttribute("cx", x.toFixed(1));
+      el.setAttribute("cy", y.toFixed(1));
+      el.setAttribute("opacity", (Math.sin(Math.PI * t) * 0.85 + 0.1).toFixed(2));
+    }
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+/* ══════════════════ EDITOR DE NOTAS ══════════════════ */
+Object.keys(AREA).forEach(function(k){
+  const o = document.createElement("option");
+  o.value = k;
+  o.textContent = AREA[k].label;
+  fArea.appendChild(o);
+});
+function openEditor(id){
+  editingId = id || null;
+  if(editingId){
+    const n = notes.find(function(x){ return x.id === editingId; });
+    if(!n) return;
+    $("modalTitle").textContent = "EDITAR NOTA";
+    fTitle.value = n.title;
+    fArea.value = n.area;
+    fBody.value = n.body;
+    $("mDelete").style.display = "";
+  }else{
+    $("modalTitle").textContent = "NOVA NOTA";
+    fTitle.value = "";
+    fArea.value = "meta";
+    fBody.value = "";
+    $("mDelete").style.display = "none";
+  }
+  modal.classList.remove("hidden");
+}
+$("addBtn").addEventListener("click", function(){ openEditor(null); });
+$("reloadBtn").addEventListener("click", function(){
+  notes = loadNotes();
+  renderGraph();
+});
+$("mCancel").addEventListener("click", function(){ modal.classList.add("hidden"); });
+$("mSave").addEventListener("click", function(){
+  const title = fTitle.value.trim();
+  const body = fBody.value.trim();
+  if(!title || !body){ return; }
+  if(editingId){
+    const n = notes.find(function(x){ return x.id === editingId; });
+    if(n){ n.title = title; n.area = fArea.value; n.body = body; }
+  }else{
+    notes.push({ id: "n" + Date.now(), area: fArea.value, title: title, body: body });
+  }
+  saveNotes();
+  modal.classList.add("hidden");
+  renderGraph();
+});
+$("mDelete").addEventListener("click", function(){
+  if(editingId){
+    notes = notes.filter(function(x){ return x.id !== editingId; });
+    saveNotes();
+  }
+  modal.classList.add("hidden");
+  renderGraph();
+});
+modal.addEventListener("click", function(e){
+  if(e.target === modal) modal.classList.add("hidden");
+});
+
+/* ══════════════════ INICIALIZAÇÃO ══════════════════ */
+renderGraph();
+</script>
+</body>
+</html>
